@@ -12,3 +12,4 @@ pandas
 datetime
 tensorflow
 ray
+boto3
