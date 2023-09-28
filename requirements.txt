@@ -13,4 +13,8 @@ datetime
 tensorflow
 ray
 boto3
+requests
+numpy
+pandas
+statsmodels
 
