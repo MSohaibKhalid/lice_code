@@ -625,7 +625,7 @@ def get_next_weeks(cond, n = 5):
 ray.init()
 
 @ray.remote
-def get_N_forecasts(df, given_locality = 13677, N = 5, top_k = 10, lr = 1e-3, n_epoch = 1, window_size=10, batch_size=8):
+def get_N_forecasts(df, given_locality = 13677, N = 5, top_k = 10, lr = 1e-3, n_epoch = 1, window_size=10, batch_size=8, output_all='all_results.csv', output_best='best_results.csv'):
 
     print("#"*100)
     print("Generating results for Locality Number:", given_locality)
@@ -1205,7 +1205,7 @@ def get_N_forecasts(df, given_locality = 13677, N = 5, top_k = 10, lr = 1e-3, n_
         "Transformer_rollingMean_next5weeks": [str(last5weeks_Transformer_last_nonzero)],
     })
 
-    temp_df.to_csv("./All_Localities/all_results.csv", mode='a', header=False, index=False)
+    temp_df.to_csv(output_all, mode='a', header=False, index=False)
 
     ##############################################################################################################
     ##############################################################################################################
@@ -1224,7 +1224,7 @@ def get_N_forecasts(df, given_locality = 13677, N = 5, top_k = 10, lr = 1e-3, n_
         "preds_with_decay": [str(preds_with_decay)],
     })
 
-    best_df.to_csv("best_results.csv", mode='a', header=False, index=False)
+    best_df.to_csv(output_best, mode='a', header=False, index=False)
 
     ##############################################################################################################
     ##############################################################################################################
@@ -1241,19 +1241,57 @@ def get_N_forecasts(df, given_locality = 13677, N = 5, top_k = 10, lr = 1e-3, n_
 if __name__=="__main__":
 
     # get_N_forecasts(df)
-    df = pd.read_csv("preprocessed_data.csv")
-    df[df['localityNo'] == 10029].tail()
+    import boto3
+    import pandas as pd
 
-    # localities_list = [12897, 12904, 13677, 19015, 33697, 29697, 35417, 34037]
-#     localities_list = get_Localities_List(client_id = "msohaibkhalid96@gmail.com:bwopenapi", client_secret = "dygsjquul4pm")
+    # Configure AWS credentials. Replace 'YOUR_ACCESS_KEY' and 'YOUR_SECRET_KEY' with your own credentials.
+    aws_access_key = 'AKIARRDJRCPCINZURGHA'
+    aws_secret_key = '6TKsd+kWfq59ID3iserxmpiGnP/lNrMDKoRj9J1C'
+    # aws_session_token = 'YOUR_SESSION_TOKEN'  # Optional, if you're using temporary session-based credentials
+
+    s3 = boto3.client('s3', aws_access_key_id=aws_access_key, aws_secret_access_key=aws_secret_key)
+
+    bucket_name = 'mylice'
+    file_key = 'preprocessed_data.csv'
+
+    # Specify a local file name where you want to save the downloaded CSV file.
+    local_file_name = 'preprocessed_data.csv'
+
+    # Download the file from S3 to your local machine.
+    s3.download_file(bucket_name, file_key, local_file_name)
+
+    # Read the CSV file into a DataFrame.
+    df = pd.read_csv(local_file_name) 
+
+    # localities_list = get_Localities_List(client_id = "msohaibkhalid96@gmail.com:bwopenapi", client_secret = "dygsjquul4pm")
     localities_list = df['localityNo'].unique().tolist()
 
-    futures = [get_N_forecasts.remote(df=df, given_locality = loc) for loc in localities_list]
+
+    # In[ ]:
+    output_all_file_name='all_results.csv'
+    output_best_file_name='best_results.csv'
+    futures = [get_N_forecasts.remote(df=df, given_locality = loc, output_all = output_all_file_name, output_best = output_best_file_name) for loc in localities_list]
+
+    # Upload the local CSV file to S3.
+    s3.upload_file(output_all_file_name, bucket_name, output_all_file_name)
+    s3.upload_file(output_best_file_name, bucket_name, output_best_file_name)
+    
+
+    # In[ ]:
+
 
     print(ray.get(futures))
 
+
+    # In[ ]:
+
+
     # for loc in localities_list:
     #     get_N_forecasts.remote(df=df, given_locality = loc)
+
+
+    # In[ ]:
+
 
     # temp_df_cols = ['localityNo', 'actual_values', 'data_points', 'LR_MAE', 'LR_Preds', 'LR_next5weeks', 'NN_MAE', 'NN_Preds', 'NN_next5weeks', 'NN2_MAE', 'NN2_Preds', 'NN2_next5weeks', 'MultiLSTM_MAE', 'MultiLSTM_Preds', 'MultiLSTM_next5weeks', 'MultiBiLSTM_MAE', 'MultiBiLSTM_Preds', 'MultiBiLSTM_next5weeks', 'Transformer_MAE', 'Transformer_Preds', 'Transformer_next5weeks', 'rollingMean_MAE', 'rollingMean_Preds', 'rollingMean_next5weeks', 'rollingLastNonZero_MAE', 'rollingLastNonZero_Preds', 'rollingLastNonZero_next5weeks', 'NN_rollingMean_MAE', 'NN_rollingMean_Preds', 'NN_rollingMean_next5weeks', 'NN2_rollingMean_MAE', 'NN2_rollingMean_Preds', 'NN2_rollingMean_next5weeks', 'MultiLSTM_rollingMean_MAE', 'MultiLSTM_rollingMean_Preds', 'MultiLSTM_rollingMean_next5weeks', 'MultiBiLSTM_rollingMean_MAE', 'MultiBiLSTM_rollingMean_Preds', 'MultiBiLSTM_rollingMean_next5weeks', 'Transformer_rollingMean_MAE', 'Transformer_rollingMean_Preds', 'Transformer_rollingMean_next5weeks']
 
