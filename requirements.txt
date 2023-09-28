@@ -1,0 +1,14 @@
+matplotlib
+Flask==2.3.3
+Flask-RESTful==0.3.10
+Flask-Session==0.5.0
+Flask-SQLAlchemy==3.0.5
+pandas
+scikit-learn
+statsmodels
+requests
+numpy
+pandas
+datetime
+tensorflow
+ray
