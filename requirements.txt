@@ -1,5 +1,5 @@
 matplotlib
-Flask==2.3.3
+Flask
 Flask-RESTful==0.3.10
 Flask-Session==0.5.0
 Flask-SQLAlchemy==3.0.5
@@ -13,3 +13,4 @@ datetime
 tensorflow
 ray
 boto3
+
