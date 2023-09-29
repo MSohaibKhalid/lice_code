@@ -1243,10 +1243,17 @@ if __name__=="__main__":
     # get_N_forecasts(df)
     import boto3
     import pandas as pd
-
+    import argparse
+    
+    parser = argparse.ArgumentParser(description="Description of your script.")
+    parser.add_argument("aws_access_key", type=str, help="aws_access_key")
+    parser.add_argument("aws_secret_key", type=str, help="aws_secret_key")
+    
+    args = parser.parse_args()
+    
     # Configure AWS credentials. Replace 'YOUR_ACCESS_KEY' and 'YOUR_SECRET_KEY' with your own credentials.
-    aws_access_key = 'AKIARRDJRCPCINZURGHA'
-    aws_secret_key = '6TKsd+kWfq59ID3iserxmpiGnP/lNrMDKoRj9J1C'
+    aws_access_key = args.aws_access_key
+    aws_secret_key = args.aws_secret_key
     # aws_session_token = 'YOUR_SESSION_TOKEN'  # Optional, if you're using temporary session-based credentials
 
     s3 = boto3.client('s3', aws_access_key_id=aws_access_key, aws_secret_access_key=aws_secret_key)
