@@ -1,14 +1,3 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[1]:
-
-
-
-
-# In[2]:
-
-
 import requests
 import numpy as np
 import pandas as pd
@@ -37,23 +26,16 @@ from tensorflow import keras
 from tensorflow.keras import layers
 import pickle
 import matplotlib.pyplot as plt
+
+import boto3
+import pandas as pd
+import argparse
+
 import ray
 
 
-# In[ ]:
+ray.init()
 
-
-# from google.colab import drive
-# drive.mount('/content/drive')
-
-
-# In[ ]:
-
-
-# cd /content/drive/MyDrive/AvgFemaleLice_Project
-
-
-# In[ ]:
 
 
 def get_headers_for_request(client_id, client_secret):
@@ -73,8 +55,6 @@ def get_headers_for_request(client_id, client_secret):
 
     return headers
 
-
-# In[ ]:
 
 
 def write_All_Localities_Treatment_Data(client_id = None, client_secret = None, locality_list = None):
@@ -146,8 +126,6 @@ def write_All_Localities_Treatment_Data(client_id = None, client_secret = None, 
     df.to_csv(output_csv_path, index=False)
 
 
-# In[ ]:
-
 
 def write_All_Localities_Temperature_Data(client_id = None, client_secret = None, locality_list = None):
 
@@ -189,8 +167,6 @@ def write_All_Localities_Temperature_Data(client_id = None, client_secret = None
     df = df.drop_duplicates(subset=['localityNo', 'year', 'week'], keep="last")
     df.to_csv(output_csv_path, index=False)
 
-
-# In[ ]:
 
 
 def write_All_Localities_avgFL_Data(client_id = None, client_secret = None, locality_list = None):
@@ -234,7 +210,6 @@ def write_All_Localities_avgFL_Data(client_id = None, client_secret = None, loca
     df.to_csv(output_csv_path, index=False)
 
 
-# In[ ]:
 
 
 def write_All_Localities_LiceType_Data(client_id = None, client_secret = None, locality_list = None):
@@ -273,8 +248,6 @@ def write_All_Localities_LiceType_Data(client_id = None, client_secret = None, l
     df = df.drop_duplicates(subset=['localityNo', 'year', 'week'], keep="last")
     df.to_csv(output_csv_path, index=False)
 
-
-# In[ ]:
 
 
 def preprocess_data(avgfemalelice_df):
@@ -327,8 +300,6 @@ def preprocess_data(avgfemalelice_df):
     return modified_df
 
 
-# In[ ]:
-
 
 def get_Localities_List(client_id = None, client_secret = None):
 
@@ -341,8 +312,6 @@ def get_Localities_List(client_id = None, client_secret = None):
 
     return list(pd.DataFrame(response_localities)["localityNo"])
 
-
-# In[ ]:
 
 
 def convert_list(str_inp):
@@ -358,8 +327,6 @@ def convert_list(str_inp):
             return convert_it(str_inp)
     return str_inp
 
-
-# In[ ]:
 
 
 def haversine_distance(lat1, lon1, lat2, lon2):
@@ -407,8 +374,6 @@ def generate_sequences(data, window_size):
     return np.array(X), np.array(y)
 
 
-# In[ ]:
-
 
 def get_Latest_Data(client_id = "msohaibkhalid96@gmail.com:bwopenapi", client_secret = "dygsjquul4pm"):
     # localities_list = get_Localities_List(client_id, client_secret)
@@ -447,14 +412,6 @@ def get_Latest_Data(client_id = "msohaibkhalid96@gmail.com:bwopenapi", client_se
     print('DONE')
 
 
-# In[ ]:
-
-
-# get_Latest_Data(client_id = "msohaibkhalid96@gmail.com:bwopenapi", client_secret = "dygsjquul4pm")
-
-
-# In[ ]:
-
 
 def convert_list(str_inp):
     if isinstance(str_inp, str):
@@ -469,14 +426,6 @@ def convert_list(str_inp):
             return convert_it(str_inp)
     return str_inp
 
-
-# In[ ]:
-
-
-# !pip install ray
-
-
-# In[ ]:
 
 
 # Define a Transformer model with time-based attention
@@ -531,6 +480,8 @@ def create_BiLSTM_Model(window_size, num_features):
     model.add(Dense(1))
     return model
 
+
+
 # Define the training data generator for multivariate LSTM
 def generate_multivariate_sequences(data, window_size):
     X, y = [], []
@@ -546,6 +497,7 @@ def get_sequences(data, window_size, pred, i):
         X[window_size-1, 0] = pred
     data[i:i + window_size] = X
     return np.array(X), data
+
 
 
 def calculate_array_differences(matched_window, check_window):
@@ -618,11 +570,6 @@ def get_next_weeks(cond, n = 5):
 
     return final_cond
 
-
-# In[ ]:
-
-
-ray.init()
 
 @ray.remote
 def get_N_forecasts(df, given_locality = 13677, N = 5, top_k = 10, lr = 1e-3, n_epoch = 200, window_size=10, batch_size=8, output_all='all_results.csv', output_best='best_results.csv'):
@@ -829,12 +776,13 @@ def get_N_forecasts(df, given_locality = 13677, N = 5, top_k = 10, lr = 1e-3, n_
     ################################ Preparing TESTING DATA ################################
     # Create a DataFrame to store the testing data
     testing_data = data_sequential.tail(2*N).copy()
+    y_test = testing_data['value'].values.flatten()
 
     ################################ TESTING LSTM MODEL ################################
     # Prepare testing data for multivariate LSTM
     multivariate_test_data = testing_data.values
     normalized_test_data = scaler.transform(multivariate_test_data)
-    y_test = multivariate_test_data[:,0].copy()
+
     normalized_test_data[:,:N] = np.zeros(N)
 
     normalized_test_data_ = np.concatenate((normalized_train_data[-(window_size+N):-N], normalized_test_data), axis=0)
@@ -848,6 +796,7 @@ def get_N_forecasts(df, given_locality = 13677, N = 5, top_k = 10, lr = 1e-3, n_
             last_window, normalized_test_data_ = get_sequences(normalized_test_data_, window_size, next_pred, i+1)
     model_MultiLSTM_preds = scaler.inverse_transform(normalized_test_data_[-2*N:])
     forecast_values_MultiLSTM = np.abs(model_MultiLSTM_preds[:,0].reshape(-1))
+    forecast_values_MultiLSTM = np.nan_to_num(forecast_values_MultiLSTM, nan=0.0)
     # Calculate mean absolute error
     mae_MultiLSTM = mean_absolute_error(y_test[:N], forecast_values_MultiLSTM[:N])
 
@@ -862,8 +811,10 @@ def get_N_forecasts(df, given_locality = 13677, N = 5, top_k = 10, lr = 1e-3, n_
             last_window, normalized_test_data_ = get_sequences(normalized_test_data_, window_size, next_pred, i+1)
     model_MultiBiLSTM_preds = scaler.inverse_transform(normalized_test_data[-2*N:])
     forecast_values_MultiBiLSTM = np.abs(model_MultiBiLSTM_preds[:,0].reshape(-1))
+    forecast_values_MultiBiLSTM = np.nan_to_num(forecast_values_MultiBiLSTM, nan=0.0)
     # Calculate mean absolute error
     mae_MultiBiLSTM = mean_absolute_error(y_test[:N], forecast_values_MultiBiLSTM[:N])
+
 
     normalized_test_data_ = np.concatenate((normalized_train_data[-(window_size+N):-N], normalized_test_data), axis=0)
     next_pred = 0.0
@@ -876,6 +827,7 @@ def get_N_forecasts(df, given_locality = 13677, N = 5, top_k = 10, lr = 1e-3, n_
             last_window, normalized_test_data_ = get_sequences(normalized_test_data_, window_size, next_pred, i+1)
     model_Transformer_preds = scaler.inverse_transform(normalized_test_data[-2*N:])
     forecast_values_Transformer = np.abs(model_Transformer_preds[:,0].reshape(-1))
+    forecast_values_Transformer = np.nan_to_num(forecast_values_Transformer, nan=0.0)
     # Calculate mean absolute error
     mae_Transformer = mean_absolute_error(y_test[:N], forecast_values_Transformer[:N])
 
@@ -941,6 +893,8 @@ def get_N_forecasts(df, given_locality = 13677, N = 5, top_k = 10, lr = 1e-3, n_
         except:
             pass
 
+    prediction_last_nonzero = np.nan_to_num(prediction_last_nonzero, nan=0.0)
+    prediction_mean = np.nan_to_num(prediction_mean, nan=0.0)
     mae_last_nonzero = mean_absolute_error(y_test[:N], prediction_last_nonzero)
     mae_mean = mean_absolute_error(y_test[:N], prediction_mean)
 
@@ -949,79 +903,109 @@ def get_N_forecasts(df, given_locality = 13677, N = 5, top_k = 10, lr = 1e-3, n_
     ##############################################################################################################
     ##############################################################################################################
     total = maeNN + mae_mean
+    if (total < 0.0001) or (np.isnan(number)):
+        total = 0.0001
     perc_NN = 1 - (maeNN / total)
     perc_mean = 1 - (mae_mean / total)
     prediction_NN_mean = (perc_NN * np.array(forecasted_valuesNN[:N])) + (perc_mean * np.array(prediction_mean))
     last5weeks_NN_mean = (perc_NN * np.array(forecasted_valuesNN[N:])) + (perc_mean * np.array(next_5_weeks_mean))
+    prediction_NN_mean = np.nan_to_num(prediction_NN_mean, nan=0.0)
     mae_NN_mean = mean_absolute_error(y_test[:N], prediction_NN_mean)
 
     total = maeNN + mae_last_nonzero
+    if (total < 0.0001) or (np.isnan(number)):
+        total = 0.0001
     perc_NN = 1 - (maeNN / total)
     perc_last_nonzero = 1 - (mae_last_nonzero / total)
     prediction_NN_last_nonzero = (perc_NN * np.array(forecasted_valuesNN[:N])) + (perc_last_nonzero * np.array(prediction_last_nonzero))
     last5weeks_NN_last_nonzero = (perc_NN * np.array(forecasted_valuesNN[N:])) + (perc_last_nonzero * np.array(next_5_weeks_last_nonzero))
+    prediction_NN_last_nonzero = np.nan_to_num(prediction_NN_last_nonzero, nan=0.0)
     mae_NN_last_nonzero = mean_absolute_error(y_test[:N], prediction_NN_last_nonzero)
 
 
     total = maeNN2 + mae_mean
+    if (total < 0.0001) or (np.isnan(number)):
+        total = 0.0001
     perc_NN2 = 1 - (maeNN2 / total)
     perc_mean = 1 - (mae_mean / total)
     prediction_NN2_mean = (perc_NN2 * np.array(forecasted_valuesNN2[:N])) + (perc_mean * np.array(prediction_mean))
     last5weeks_NN2_mean = (perc_NN2 * np.array(forecasted_valuesNN2[N:])) + (perc_mean * np.array(next_5_weeks_mean))
+    prediction_NN2_mean = np.nan_to_num(prediction_NN2_mean, nan=0.0)
     mae_NN2_mean = mean_absolute_error(y_test[:N], prediction_NN2_mean)
 
     total = maeNN2 + mae_last_nonzero
+    if (total < 0.0001) or (np.isnan(number)):
+        total = 0.0001
     perc_NN2 = 1 - (maeNN2 / total)
     perc_last_nonzero = 1 - (mae_last_nonzero / total)
     prediction_NN2_last_nonzero = (perc_NN2 * np.array(forecasted_valuesNN2[:N])) + (perc_last_nonzero * np.array(prediction_last_nonzero))
     last5weeks_NN2_last_nonzero = (perc_NN2 * np.array(forecasted_valuesNN2[N:])) + (perc_last_nonzero * np.array(next_5_weeks_last_nonzero))
+    prediction_NN2_last_nonzero = np.nan_to_num(prediction_NN2_last_nonzero, nan=0.0)
     mae_NN2_last_nonzero = mean_absolute_error(y_test[:N], prediction_NN2_last_nonzero)
 
 
 
     total = mae_MultiLSTM + mae_mean
+    if (total < 0.0001) or (np.isnan(number)):
+        total = 0.0001
     perc_MultiLSTM = 1 - (mae_MultiLSTM / total)
     perc_mean = 1 - (mae_mean / total)
     prediction_MultiLSTM_mean = (perc_MultiLSTM * np.array(forecast_values_MultiLSTM[:N])) + (perc_mean * np.array(prediction_mean))
     last5weeks_MultiLSTM_mean = (perc_MultiLSTM * np.array(forecast_values_MultiLSTM[N:])) + (perc_mean * np.array(next_5_weeks_mean))
+    prediction_MultiLSTM_mean = np.nan_to_num(prediction_MultiLSTM_mean, nan=0.0)
     mae_MultiLSTM_mean = mean_absolute_error(y_test[:N], prediction_MultiLSTM_mean)
 
     total = mae_MultiLSTM + mae_last_nonzero
+    if (total < 0.0001) or (np.isnan(number)):
+        total = 0.0001
     perc_MultiLSTM = 1 - (mae_MultiLSTM / total)
     perc_last_nonzero = 1 - (mae_last_nonzero / total)
     prediction_MultiLSTM_last_nonzero = (perc_MultiLSTM * np.array(forecast_values_MultiLSTM[:N])) + (perc_last_nonzero * np.array(prediction_last_nonzero))
     last5weeks_MultiLSTM_last_nonzero = (perc_MultiLSTM * np.array(forecast_values_MultiLSTM[N:])) + (perc_last_nonzero * np.array(next_5_weeks_last_nonzero))
+    prediction_MultiLSTM_last_nonzero = np.nan_to_num(prediction_MultiLSTM_last_nonzero, nan=0.0)
     mae_MultiLSTM_last_nonzero = mean_absolute_error(y_test[:N], prediction_MultiLSTM_last_nonzero)
 
 
 
     total = mae_MultiBiLSTM + mae_mean
+    if (total < 0.0001) or (np.isnan(number)):
+        total = 0.0001
     perc_MultiBiLSTM = 1 - (mae_MultiBiLSTM / total)
     perc_mean = 1 - (mae_mean / total)
     prediction_MultiBiLSTM_mean = (perc_MultiBiLSTM * np.array(forecast_values_MultiBiLSTM[:N])) + (perc_mean * np.array(prediction_mean))
     last5weeks_MultiBiLSTM_mean = (perc_MultiBiLSTM * np.array(forecast_values_MultiBiLSTM[N:])) + (perc_mean * np.array(next_5_weeks_mean))
+    prediction_MultiBiLSTM_mean = np.nan_to_num(prediction_MultiBiLSTM_mean, nan=0.0)
     mae_MultiBiLSTM_mean = mean_absolute_error(y_test[:N], prediction_MultiBiLSTM_mean)
 
     total = mae_MultiBiLSTM + mae_last_nonzero
+    if (total < 0.0001) or (np.isnan(number)):
+        total = 0.0001
     perc_MultiBiLSTM = 1 - (mae_MultiBiLSTM / total)
     perc_last_nonzero = 1 - (mae_last_nonzero / total)
     prediction_MultiBiLSTM_last_nonzero = (perc_MultiBiLSTM * np.array(forecast_values_MultiBiLSTM[:N])) + (perc_last_nonzero * np.array(prediction_last_nonzero))
     last5weeks_MultiBiLSTM_last_nonzero = (perc_MultiBiLSTM * np.array(forecast_values_MultiBiLSTM[N:])) + (perc_last_nonzero * np.array(next_5_weeks_last_nonzero))
+    prediction_MultiBiLSTM_last_nonzero = np.nan_to_num(prediction_MultiBiLSTM_last_nonzero, nan=0.0)
     mae_MultiBiLSTM_last_nonzero = mean_absolute_error(y_test[:N], prediction_MultiBiLSTM_last_nonzero)
 
 
     total = mae_Transformer + mae_mean
+    if (total < 0.0001) or (np.isnan(number)):
+        total = 0.0001
     perc_Transformer = 1 - (mae_Transformer / total)
     perc_mean = 1 - (mae_mean / total)
     prediction_Transformer_mean = (perc_Transformer * np.array(forecast_values_Transformer[:N])) + (perc_mean * np.array(prediction_mean))
     last5weeks_Transformer_mean = (perc_Transformer * np.array(forecast_values_Transformer[N:])) + (perc_mean * np.array(next_5_weeks_mean))
+    prediction_Transformer_mean = np.nan_to_num(prediction_Transformer_mean, nan=0.0)
     mae_Transformer_mean = mean_absolute_error(y_test[:N], prediction_Transformer_mean)
 
     total = mae_Transformer + mae_last_nonzero
+    if (total < 0.0001) or (np.isnan(number)):
+        total = 0.0001
     perc_Transformer = 1 - (mae_Transformer / total)
     perc_last_nonzero = 1 - (mae_last_nonzero / total)
     prediction_Transformer_last_nonzero = (perc_Transformer * np.array(forecast_values_Transformer[:N])) + (perc_last_nonzero * np.array(prediction_last_nonzero))
     last5weeks_Transformer_last_nonzero = (perc_Transformer * np.array(forecast_values_Transformer[N:])) + (perc_last_nonzero * np.array(next_5_weeks_last_nonzero))
+    prediction_Transformer_last_nonzero = np.nan_to_num(prediction_Transformer_last_nonzero, nan=0.0)
     mae_Transformer_last_nonzero = mean_absolute_error(y_test[:N], prediction_Transformer_last_nonzero)
 
     print("\n--> Training Combined Models Complete.\n")
@@ -1228,33 +1212,35 @@ def get_N_forecasts(df, given_locality = 13677, N = 5, top_k = 10, lr = 1e-3, n_
 
     ##############################################################################################################
     ##############################################################################################################
-
-
-    return given_locality
-
     # except:
     #     print("\n--> Error processing data for Locality Number: {}\n".format(given_locality))
 
+    return given_locality
 
-# In[ ]:
+    
+
 
 if __name__=="__main__":
 
-    # get_N_forecasts(df)
-    import boto3
-    import pandas as pd
-    import argparse
-    
+    output_all_file_name = 'all_results.csv'
+    output_best_file_name ='best_results.csv'
+
     parser = argparse.ArgumentParser(description="Description of your script.")
     parser.add_argument("aws_access_key", type=str, help="aws_access_key")
     parser.add_argument("aws_secret_key", type=str, help="aws_secret_key")
-    
+    parser.add_argument("batch_size", type=int, default=5, help="batch_size")
+    parser.add_argument("max_localities", type=int, default=1500, help="maximum number of localities to run code")
+    parser.add_argument("n_epochs", type=int, default=200, help="number of epochs")
+
     args = parser.parse_args()
+
+    batch_size = args.batch_size
+    n_epochs = args.n_epochs
+    max_localities = args.max_localities
     
     # Configure AWS credentials. Replace 'YOUR_ACCESS_KEY' and 'YOUR_SECRET_KEY' with your own credentials.
     aws_access_key = args.aws_access_key
     aws_secret_key = args.aws_secret_key
-    # aws_session_token = 'YOUR_SESSION_TOKEN'  # Optional, if you're using temporary session-based credentials
 
     s3 = boto3.client('s3', aws_access_key_id=aws_access_key, aws_secret_access_key=aws_secret_key, region_name='eu-north-1')
 
@@ -1270,25 +1256,19 @@ if __name__=="__main__":
     # Read the CSV file into a DataFrame.
     df = pd.read_csv(local_file_name) 
 
-    # localities_list = get_Localities_List(client_id = "msohaibkhalid96@gmail.com:bwopenapi", client_secret = "dygsjquul4pm")
-    localities_list = df['localityNo'].unique().tolist()[:100]
+    localities_list = df['localityNo'].unique().tolist()[:max_localities]
+
+    for i in range(0, len(localities_list), batch_size):
+        batch = localities_list[i:i + batch_size]
+        futures = [get_N_forecasts.remote(df=df, given_locality = loc, n_epoch = n_epochs, output_all = output_all_file_name, output_best = output_best_file_name) for loc in batch]
+        ray.get(futures)
+        s3.upload_file(output_all_file_name, bucket_name, output_all_file_name)
+        s3.upload_file(output_best_file_name, bucket_name, output_best_file_name)
 
 
-    # In[ ]:
-    output_all_file_name='all_results.csv'
-    output_best_file_name='best_results.csv'
-    futures = [get_N_forecasts.remote(df=df, given_locality = loc, output_all = output_all_file_name, output_best = output_best_file_name) for loc in localities_list]
-    
+    # futures = [get_N_forecasts.remote(df=df, given_locality = loc, output_all = output_all_file_name, output_best = output_best_file_name) for loc in localities_list]
+    # ray.get(futures)
 
-    print(ray.get(futures))
-    s3.upload_file(output_all_file_name, bucket_name, output_all_file_name)
-    s3.upload_file(output_best_file_name, bucket_name, output_best_file_name)
-
-    # In[ ]:
-
-
-    # for loc in localities_list:
-    #     get_N_forecasts.remote(df=df, given_locality = loc)
-
-
+    # s3.upload_file(output_all_file_name, bucket_name, output_all_file_name)
+    # s3.upload_file(output_best_file_name, bucket_name, output_best_file_name)
 
