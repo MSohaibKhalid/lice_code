@@ -1271,7 +1271,7 @@ if __name__=="__main__":
     df = pd.read_csv(local_file_name) 
 
     # localities_list = get_Localities_List(client_id = "msohaibkhalid96@gmail.com:bwopenapi", client_secret = "dygsjquul4pm")
-    localities_list = df['localityNo'].unique().tolist()
+    localities_list = df['localityNo'].unique().tolist()[:100]
 
 
     # In[ ]:
