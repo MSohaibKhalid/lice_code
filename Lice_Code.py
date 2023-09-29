@@ -31,6 +31,7 @@ import boto3
 import pandas as pd
 import argparse
 import traceback
+import datetime
 
 import ray
 
@@ -577,6 +578,9 @@ def get_N_forecasts(df, given_locality = 13677, N = 5, top_k = 10, lr = 1e-3, n_
 
     print("#"*100)
     print("Generating results for Locality Number:", given_locality)
+    
+    # Get the current date and time when the code starts
+    start_time = datetime.datetime.now()
 
     try:
         given_locality_df = df[df['localityNo'] == given_locality]
@@ -1214,25 +1218,45 @@ def get_N_forecasts(df, given_locality = 13677, N = 5, top_k = 10, lr = 1e-3, n_
         ##############################################################################################################
         ##############################################################################################################
 
+        end_time = datetime.datetime.now()
+
+        # Calculate the duration of code execution
+        duration = end_time - start_time
+        minutes = duration.seconds // 60
+        seconds = duration.seconds % 60
+
         train_hist_df = pd.DataFrame({
             "localityNo": [given_locality],
             "trained": ['yes'],
             'error_message': ['N/A'],
             'traceback': ['N/A'],
+            'start_time': [str(start_time)],
+            'end_time': [str(end_time)],
+            'duration': [str(minutes)+' mins and '+str(seconds)+' secs'],
         })
         train_hist_df.to_csv(training_history, mode='a', header=False, index=False)
+
+
     
     except Exception as e:
         # Get the traceback as a string
         traceback_str = traceback.format_exc()
-        print(e)
-        print(traceback_str)
+
+        end_time = datetime.datetime.now()
+
+        # Calculate the duration of code execution
+        duration = end_time - start_time
+        minutes = duration.seconds // 60
+        seconds = duration.seconds % 60
 
         train_hist_df = pd.DataFrame({
             "localityNo": [given_locality],
             "trained": ['no'],
             'error_message': [str(e)],
             'traceback': [traceback_str],
+            'start_time': [str(start_time)],
+            'end_time': [str(end_time)],
+            'duration': [str(minutes)+' mins and '+str(seconds)+' secs'],
         })
         train_hist_df.to_csv(training_history, mode='a', header=False, index=False)
 
@@ -1252,7 +1276,7 @@ if __name__=="__main__":
     parser = argparse.ArgumentParser(description="Description of your script.")
     parser.add_argument("aws_access_key", type=str, help="aws_access_key")
     parser.add_argument("aws_secret_key", type=str, help="aws_secret_key")
-    parser.add_argument("batch_size", type=int, default=5, help="batch_size")
+    parser.add_argument("batch_size", type=int, default=25, help="batch_size")
     parser.add_argument("max_localities", type=int, default=1500, help="maximum number of localities to run code")
     parser.add_argument("n_epochs", type=int, default=200, help="number of epochs")
 
