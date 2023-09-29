@@ -625,7 +625,7 @@ def get_next_weeks(cond, n = 5):
 ray.init()
 
 @ray.remote
-def get_N_forecasts(df, given_locality = 13677, N = 5, top_k = 10, lr = 1e-3, n_epoch = 2, window_size=10, batch_size=8, output_all='all_results.csv', output_best='best_results.csv'):
+def get_N_forecasts(df, given_locality = 13677, N = 5, top_k = 10, lr = 1e-3, n_epoch = 200, window_size=10, batch_size=8, output_all='all_results.csv', output_best='best_results.csv'):
 
     print("#"*100)
     print("Generating results for Locality Number:", given_locality)
@@ -1271,7 +1271,7 @@ if __name__=="__main__":
     df = pd.read_csv(local_file_name) 
 
     # localities_list = get_Localities_List(client_id = "msohaibkhalid96@gmail.com:bwopenapi", client_secret = "dygsjquul4pm")
-    localities_list = df['localityNo'].unique().tolist()[:1]
+    localities_list = df['localityNo'].unique().tolist()
 
 
     # In[ ]:
