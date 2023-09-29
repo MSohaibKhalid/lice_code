@@ -1271,46 +1271,24 @@ if __name__=="__main__":
     df = pd.read_csv(local_file_name) 
 
     # localities_list = get_Localities_List(client_id = "msohaibkhalid96@gmail.com:bwopenapi", client_secret = "dygsjquul4pm")
-    localities_list = df['localityNo'].unique().tolist()
+    localities_list = df['localityNo'].unique().tolist()[:1]
 
 
     # In[ ]:
     output_all_file_name='all_results.csv'
     output_best_file_name='best_results.csv'
     futures = [get_N_forecasts.remote(df=df, given_locality = loc, output_all = output_all_file_name, output_best = output_best_file_name) for loc in localities_list]
-
-    # Upload the local CSV file to S3.
-    s3.upload_file(output_all_file_name, bucket_name, output_all_file_name)
-    s3.upload_file(output_best_file_name, bucket_name, output_best_file_name)
     
 
-    # In[ ]:
-
-
     print(ray.get(futures))
-
+    s3.upload_file(output_all_file_name, bucket_name, output_all_file_name)
+    s3.upload_file(output_best_file_name, bucket_name, output_best_file_name)
 
     # In[ ]:
 
 
     # for loc in localities_list:
     #     get_N_forecasts.remote(df=df, given_locality = loc)
-
-
-    # In[ ]:
-
-
-    # temp_df_cols = ['localityNo', 'actual_values', 'data_points', 'LR_MAE', 'LR_Preds', 'LR_next5weeks', 'NN_MAE', 'NN_Preds', 'NN_next5weeks', 'NN2_MAE', 'NN2_Preds', 'NN2_next5weeks', 'MultiLSTM_MAE', 'MultiLSTM_Preds', 'MultiLSTM_next5weeks', 'MultiBiLSTM_MAE', 'MultiBiLSTM_Preds', 'MultiBiLSTM_next5weeks', 'Transformer_MAE', 'Transformer_Preds', 'Transformer_next5weeks', 'rollingMean_MAE', 'rollingMean_Preds', 'rollingMean_next5weeks', 'rollingLastNonZero_MAE', 'rollingLastNonZero_Preds', 'rollingLastNonZero_next5weeks', 'NN_rollingMean_MAE', 'NN_rollingMean_Preds', 'NN_rollingMean_next5weeks', 'NN2_rollingMean_MAE', 'NN2_rollingMean_Preds', 'NN2_rollingMean_next5weeks', 'MultiLSTM_rollingMean_MAE', 'MultiLSTM_rollingMean_Preds', 'MultiLSTM_rollingMean_next5weeks', 'MultiBiLSTM_rollingMean_MAE', 'MultiBiLSTM_rollingMean_Preds', 'MultiBiLSTM_rollingMean_next5weeks', 'Transformer_rollingMean_MAE', 'Transformer_rollingMean_Preds', 'Transformer_rollingMean_next5weeks']
-
-    # How to read best_results.csv
-    best_df = pd.read_csv('./All_Localities/best_results.csv', header = None)
-    best_df_cols = ['localityNo', 'data_points', 'actual_values', 'best_model', 'mae', 'preds', 'todo_treatment', 'week_for_treatment', 'treatment_threshold', 'expected_decay', 'preds_with_decay']
-    best_df.columns = best_df_cols
-    best_df.head()
-
-
-    # In[ ]:
-
 
 
 
