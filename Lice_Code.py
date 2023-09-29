@@ -903,7 +903,7 @@ def get_N_forecasts(df, given_locality = 13677, N = 5, top_k = 10, lr = 1e-3, n_
     ##############################################################################################################
     ##############################################################################################################
     total = maeNN + mae_mean
-    if (total < 0.0001) or (np.isnan(number)):
+    if (total < 0.0001) or (np.isnan(total)):
         total = 0.0001
     perc_NN = 1 - (maeNN / total)
     perc_mean = 1 - (mae_mean / total)
@@ -913,7 +913,7 @@ def get_N_forecasts(df, given_locality = 13677, N = 5, top_k = 10, lr = 1e-3, n_
     mae_NN_mean = mean_absolute_error(y_test[:N], prediction_NN_mean)
 
     total = maeNN + mae_last_nonzero
-    if (total < 0.0001) or (np.isnan(number)):
+    if (total < 0.0001) or (np.isnan(total)):
         total = 0.0001
     perc_NN = 1 - (maeNN / total)
     perc_last_nonzero = 1 - (mae_last_nonzero / total)
@@ -924,7 +924,7 @@ def get_N_forecasts(df, given_locality = 13677, N = 5, top_k = 10, lr = 1e-3, n_
 
 
     total = maeNN2 + mae_mean
-    if (total < 0.0001) or (np.isnan(number)):
+    if (total < 0.0001) or (np.isnan(total)):
         total = 0.0001
     perc_NN2 = 1 - (maeNN2 / total)
     perc_mean = 1 - (mae_mean / total)
@@ -934,7 +934,7 @@ def get_N_forecasts(df, given_locality = 13677, N = 5, top_k = 10, lr = 1e-3, n_
     mae_NN2_mean = mean_absolute_error(y_test[:N], prediction_NN2_mean)
 
     total = maeNN2 + mae_last_nonzero
-    if (total < 0.0001) or (np.isnan(number)):
+    if (total < 0.0001) or (np.isnan(total)):
         total = 0.0001
     perc_NN2 = 1 - (maeNN2 / total)
     perc_last_nonzero = 1 - (mae_last_nonzero / total)
@@ -946,7 +946,7 @@ def get_N_forecasts(df, given_locality = 13677, N = 5, top_k = 10, lr = 1e-3, n_
 
 
     total = mae_MultiLSTM + mae_mean
-    if (total < 0.0001) or (np.isnan(number)):
+    if (total < 0.0001) or (np.isnan(total)):
         total = 0.0001
     perc_MultiLSTM = 1 - (mae_MultiLSTM / total)
     perc_mean = 1 - (mae_mean / total)
@@ -956,7 +956,7 @@ def get_N_forecasts(df, given_locality = 13677, N = 5, top_k = 10, lr = 1e-3, n_
     mae_MultiLSTM_mean = mean_absolute_error(y_test[:N], prediction_MultiLSTM_mean)
 
     total = mae_MultiLSTM + mae_last_nonzero
-    if (total < 0.0001) or (np.isnan(number)):
+    if (total < 0.0001) or (np.isnan(total)):
         total = 0.0001
     perc_MultiLSTM = 1 - (mae_MultiLSTM / total)
     perc_last_nonzero = 1 - (mae_last_nonzero / total)
@@ -968,7 +968,7 @@ def get_N_forecasts(df, given_locality = 13677, N = 5, top_k = 10, lr = 1e-3, n_
 
 
     total = mae_MultiBiLSTM + mae_mean
-    if (total < 0.0001) or (np.isnan(number)):
+    if (total < 0.0001) or (np.isnan(total)):
         total = 0.0001
     perc_MultiBiLSTM = 1 - (mae_MultiBiLSTM / total)
     perc_mean = 1 - (mae_mean / total)
@@ -978,7 +978,7 @@ def get_N_forecasts(df, given_locality = 13677, N = 5, top_k = 10, lr = 1e-3, n_
     mae_MultiBiLSTM_mean = mean_absolute_error(y_test[:N], prediction_MultiBiLSTM_mean)
 
     total = mae_MultiBiLSTM + mae_last_nonzero
-    if (total < 0.0001) or (np.isnan(number)):
+    if (total < 0.0001) or (np.isnan(total)):
         total = 0.0001
     perc_MultiBiLSTM = 1 - (mae_MultiBiLSTM / total)
     perc_last_nonzero = 1 - (mae_last_nonzero / total)
@@ -989,7 +989,7 @@ def get_N_forecasts(df, given_locality = 13677, N = 5, top_k = 10, lr = 1e-3, n_
 
 
     total = mae_Transformer + mae_mean
-    if (total < 0.0001) or (np.isnan(number)):
+    if (total < 0.0001) or (np.isnan(total)):
         total = 0.0001
     perc_Transformer = 1 - (mae_Transformer / total)
     perc_mean = 1 - (mae_mean / total)
@@ -999,7 +999,7 @@ def get_N_forecasts(df, given_locality = 13677, N = 5, top_k = 10, lr = 1e-3, n_
     mae_Transformer_mean = mean_absolute_error(y_test[:N], prediction_Transformer_mean)
 
     total = mae_Transformer + mae_last_nonzero
-    if (total < 0.0001) or (np.isnan(number)):
+    if (total < 0.0001) or (np.isnan(total)):
         total = 0.0001
     perc_Transformer = 1 - (mae_Transformer / total)
     perc_last_nonzero = 1 - (mae_last_nonzero / total)
