@@ -1256,7 +1256,7 @@ if __name__=="__main__":
     aws_secret_key = args.aws_secret_key
     # aws_session_token = 'YOUR_SESSION_TOKEN'  # Optional, if you're using temporary session-based credentials
 
-    s3 = boto3.client('s3', aws_access_key_id=aws_access_key, aws_secret_access_key=aws_secret_key)
+    s3 = boto3.client('s3', aws_access_key_id=aws_access_key, aws_secret_access_key=aws_secret_key, region_name='eu-north-1')
 
     bucket_name = 'mylice'
     file_key = 'preprocessed_data.csv'
