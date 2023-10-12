@@ -1002,7 +1002,7 @@ def get_results_comb(model_name, mae1, preds1, futures1, mae2, preds2, futures2,
 
     return mae, preds_comb, future_comb, best_model_specs
 
-
+@ray.remote
 def get_N_forecasts(df, given_locality = 13677, N = 5, top_k = 10, lr = 1e-3, n_epoch = 200, window_size=10, batch_size=8, output_all='all_results.csv', output_best='best_results.csv', training_history = 'training_history.csv'):
 
     print("#"*100)
