@@ -34,8 +34,6 @@ import traceback
 import datetime
 
 import ray
-
-
 ray.init()
 
 
@@ -122,8 +120,7 @@ def write_All_Localities_Treatment_Data(client_id = None, client_secret = None, 
         except:
             print("--> Error fetching data for Locality Number: {} for year: {}\n".format(loc_num, current_year))
 
-    df = pd.read_csv(output_csv_path, header = None)
-    df.columns = ["localityNo", "year", "week", "mechanicalTreatment", "mechanicalEntirity", "chemicalTreatment", "chemicalEntirity"]
+    df = pd.read_csv(output_csv_path)
     df = df.drop_duplicates(subset=['localityNo', 'year', 'week'], keep="last")
     df.to_csv(output_csv_path, index=False)
 
@@ -164,8 +161,7 @@ def write_All_Localities_Temperature_Data(client_id = None, client_secret = None
         except:
             print("--> Error fetching data for Locality Number: {} for year: {}\n".format(loc_num, current_year))
 
-    df = pd.read_csv(output_csv_path, header = None)
-    df.columns = ["localityNo", "year", "week", "temperature"]
+    df = pd.read_csv(output_csv_path)
     df = df.drop_duplicates(subset=['localityNo', 'year', 'week'], keep="last")
     df.to_csv(output_csv_path, index=False)
 
@@ -206,8 +202,7 @@ def write_All_Localities_avgFL_Data(client_id = None, client_secret = None, loca
         except:
             print("--> Error fetching data for Locality Number: {} for year: {}\n".format(loc_num, current_year))
 
-    df = pd.read_csv(output_csv_path, header = None)
-    df.columns = ["localityNo", "year", "week", "value"]
+    df = pd.read_csv(output_csv_path)
     df = df.drop_duplicates(subset=['localityNo', 'year', 'week'], keep="last")
     df.to_csv(output_csv_path, index=False)
 
@@ -245,8 +240,7 @@ def write_All_Localities_LiceType_Data(client_id = None, client_secret = None, l
         except:
             print("--> Error fetching data for Locality Number: {} for year: {}\n".format(loc_num, current_year))
 
-    df = pd.read_csv(output_csv_path, header = None)
-    df.columns = ["localityNo", "year", "week", "avgMobileLice","avgStationaryLice"]
+    df = pd.read_csv(output_csv_path)
     df = df.drop_duplicates(subset=['localityNo', 'year', 'week'], keep="last")
     df.to_csv(output_csv_path, index=False)
 
@@ -377,14 +371,14 @@ def generate_sequences(data, window_size):
 
 
 
-def get_Latest_Data(client_id = "msohaibkhalid96@gmail.com:bwopenapi", client_secret = "dygsjquul4pm"):
-    # localities_list = get_Localities_List(client_id, client_secret)
-    # write_All_Localities_avgFL_Data(client_id, client_secret, localities_list)
-    # write_All_Localities_Treatment_Data(client_id, client_secret, localities_list)
-    # write_All_Localities_Temperature_Data(client_id, client_secret, localities_list)
-    # write_All_Localities_LiceType_Data(client_id, client_secret, localities_list)
+def get_Latest_Data(client_id = None, client_secret = None):
+    localities_list = get_Localities_List(client_id, client_secret)
+    write_All_Localities_avgFL_Data(client_id, client_secret, localities_list)
+    write_All_Localities_Treatment_Data(client_id, client_secret, localities_list)
+    write_All_Localities_Temperature_Data(client_id, client_secret, localities_list)
+    write_All_Localities_LiceType_Data(client_id, client_secret, localities_list)
 
-    avgfemalelice_df = pd.read_csv('final_avgFL_new.csv')
+    avgfemalelice_df = pd.read_csv('final_avgFL.csv')
     modified_avgFL = preprocess_data(avgfemalelice_df)
 
     temp_df = pd.read_csv("final_temperature.csv")
@@ -405,10 +399,10 @@ def get_Latest_Data(client_id = "msohaibkhalid96@gmail.com:bwopenapi", client_se
     merged_df = pd.merge(merged_df, liceType_df, on=['localityNo', 'year', 'week'], how='left')
     merged_df = merged_df.fillna(0)
 
-    pos_df = pd.read_csv("position.csv")
-    pos_df = pos_df.drop_duplicates(subset=['localityNo'], keep="last").reset_index(drop=True)
+    # pos_df = pd.read_csv("position.csv")
+    # pos_df = pos_df.drop_duplicates(subset=['localityNo'], keep="last").reset_index(drop=True)
 
-    merged_df = pd.merge(merged_df, pos_df, on=['localityNo'], how='left')
+    # merged_df = pd.merge(merged_df, pos_df, on=['localityNo'], how='left')
 
     merged_df.to_csv("preprocessed_data.csv", index=False)
     print('DONE')
@@ -573,7 +567,442 @@ def get_next_weeks(cond, n = 5):
     return final_cond
 
 
-@ray.remote
+
+def get_top_K_localities(given_locality, given_locality_df, df, year, week, top_k):
+    # Calculate the correlation coefficients for each locality
+    correlation_coeffs = {}
+    for locality in df['localityNo'].unique():
+        if locality != given_locality:
+
+            locality_df = df[df['localityNo'] == locality]
+            # Filter the data for the specific week and year
+            week_year_data = pd.DataFrame()
+            week_year_data = pd.concat([week_year_data, locality_df[locality_df['year'] < year]])
+            week_year_data = pd.concat([week_year_data, locality_df[(locality_df['week'] <= week) & (locality_df['year'] == year)]])
+            locality_df = week_year_data.copy()
+
+            std_given_locality = given_locality_df['value'].std()
+            std_locality = locality_df['value'].std()
+            if std_given_locality != 0 and std_locality != 0:
+                correlation = np.corrcoef(given_locality_df['value'], locality_df['value'], rowvar=False)[0, 1]
+                correlation_coeffs[locality] = correlation
+
+    # Sort the correlation coefficients in descending order and get the top K correlated localities
+    top_k_correlated = sorted(correlation_coeffs.items(), key=lambda x: x[1], reverse=True)[:top_k]
+
+    # Extract the localityNos from the top K correlated localities
+    top_k_localities = [locality for locality, _ in top_k_correlated]
+
+    return top_k_localities
+
+
+def prepare_dataset(df, given_locality, top_k_localities, year, week):
+    # Create a DataFrame to store the training data
+    data = pd.DataFrame()
+    # Iterate over each week to prepare the training data
+    for locality in (list(top_k_localities) + [given_locality]):
+        filtered_locality_df = df[df["localityNo"] == locality]
+        # Filter the data for the specific week and year
+        week_year_data = pd.DataFrame()
+        week_year_data = pd.concat([week_year_data, filtered_locality_df[filtered_locality_df['year'] < year]])
+        week_year_data = pd.concat([week_year_data, filtered_locality_df[(filtered_locality_df['week'] <= week) & (filtered_locality_df['year'] == year)]])
+
+        if (locality == given_locality):
+            data['value'] = list(week_year_data["value"])+[0]*5
+            data["temperature"] = [0]*5+list(week_year_data["temperature"])
+            data["mechanicalTreatment"] = [0]*5+list(week_year_data["mechanicalTreatment"])
+            data["mechanicalEntirity"] = [0]*5+list(week_year_data["mechanicalEntirity"])
+            data["chemicalTreatment"] = [0]*5+list(week_year_data["chemicalTreatment"])
+            data["chemicalEntirity"] = [0]*5+list(week_year_data["chemicalEntirity"])
+            data["avgMobileLice"] = [0]*5+list(week_year_data["avgMobileLice"])
+            data["avgStationaryLice"] = [0]*5+list(week_year_data["avgStationaryLice"])
+        else:
+            data[str(locality)] = [0]*5+list(week_year_data["value"])
+            data[str(locality) + "_temperature"] = [0]*5+list(week_year_data["temperature"])
+            data[str(locality) + "_mechanicalTreatment"] = [0]*5+list(week_year_data["mechanicalTreatment"])
+            data[str(locality) + "_mechanicalEntirity"] = [0]*5+list(week_year_data["mechanicalEntirity"])
+            data[str(locality) + "_chemicalTreatment"] = [0]*5+list(week_year_data["chemicalTreatment"])
+            data[str(locality) + "_chemicalEntirity"] = [0]*5+list(week_year_data["chemicalEntirity"])
+            data[str(locality) + "_avgMobileLice"] = [0]*5+list(week_year_data["avgMobileLice"])
+            data[str(locality) + "_avgStationaryLice"] = [0]*5+list(week_year_data["avgStationaryLice"])
+
+    return data
+
+
+def get_results_LR(X_train_scaled, y_train, X_test_scaled, actual_values, best_model_specs, N):
+    
+    model_name = "LR"
+
+    # Train a linear regression model
+    model = LinearRegression()
+    model.fit(X_train_scaled, y_train)
+
+    print("\n--> Training {} Complete.".format(model_name))
+
+    # Predict the values for the given locality using the model
+    forecasted_values = model.predict(X_test_scaled)
+    forecasted_values = np.absolute(forecasted_values)
+    preds = forecasted_values[:N].reshape(-1)
+    future_values = forecasted_values[N:].reshape(-1)
+
+    # Calculate mean absolute error and R^2 score
+    mae = mean_absolute_error(actual_values, preds)
+
+    print("--> Evaluation for {} Complete.".format(model_name))
+
+    if mae < best_model_specs['mae']:
+        best_model_specs['name'] = model_name
+        best_model_specs['preds'] = preds
+        best_model_specs['future_values'] = future_values
+        best_model_specs['mae'] = mae
+
+        print('Updating best model specs for {}'.format(model_name))
+
+    print()
+
+    return mae, preds, future_values, best_model_specs
+
+
+
+def get_results_NN(X_train_scaled, y_train, X_test_scaled, actual_values, best_model_specs, n_epoch, lr, N):
+    
+    model_name = "NN"
+
+    optm = tf.keras.optimizers.legacy.Adam(learning_rate=lr)
+
+    # Train a neural network model
+    model = Sequential()
+    model.add(Dense(64, activation='relu', input_shape=(X_train_scaled.shape[1],)))
+    model.add(Dense(64, activation='relu'))
+    model.add(Dense(1))
+    model.compile(optimizer=optm, loss='mean_absolute_error')
+    model.fit(X_train_scaled, y_train, epochs=n_epoch, verbose=0)
+
+    print("\n--> Training {} Complete.".format(model_name))
+
+    # Predict the values for the given locality using the model
+    forecasted_values = model.predict(X_test_scaled)
+    forecasted_values = np.absolute(forecasted_values)
+    preds = forecasted_values[:N].reshape(-1)
+    future_values = forecasted_values[N:].reshape(-1)
+
+    # Calculate mean absolute error and R^2 score
+    mae = mean_absolute_error(actual_values, preds)
+
+    print("--> Evaluation for {} Complete.".format(model_name))
+
+    if mae < best_model_specs['mae']:
+        best_model_specs['name'] = model_name
+        best_model_specs['preds'] = preds
+        best_model_specs['future_values'] = future_values
+        best_model_specs['mae'] = mae
+
+        print('Updating best model specs for {}'.format(model_name))
+
+    print()
+
+    return mae, preds, future_values, best_model_specs
+
+
+
+def get_results_NN2(X_train_scaled, y_train, X_test_scaled, actual_values, best_model_specs, n_epoch, lr, N):
+    
+    model_name = "NN2"
+
+    optm = tf.keras.optimizers.legacy.Adam(learning_rate=lr)
+
+    # Train a more complex neural network model
+    model = Sequential()
+    model.add(Dense(128, activation='sigmoid', input_shape=(X_train_scaled.shape[1],)))
+    model.add(Dense(64, activation='sigmoid'))
+    model.add(Dense(8, activation='sigmoid'))
+    model.add(Dense(1))
+    model.compile(optimizer=optm, loss='mean_absolute_error')
+    model.fit(X_train_scaled, y_train, epochs=n_epoch, verbose=0)
+
+    print("\n--> Training {} Complete.".format(model_name))
+
+    # Predict the values for the given locality using the model
+    forecasted_values = model.predict(X_test_scaled)
+    forecasted_values = np.absolute(forecasted_values)
+    preds = forecasted_values[:N].reshape(-1)
+    future_values = forecasted_values[N:].reshape(-1)
+
+    # Calculate mean absolute error and R^2 score
+    mae = mean_absolute_error(actual_values, preds)
+
+    print("--> Evaluation for {} Complete.".format(model_name))
+
+    if mae < best_model_specs['mae']:
+        best_model_specs['name'] = model_name
+        best_model_specs['preds'] = preds
+        best_model_specs['future_values'] = future_values
+        best_model_specs['mae'] = mae
+
+        print('Updating best model specs for {}'.format(model_name))
+
+    print()
+
+    return mae, preds, future_values, best_model_specs
+
+
+def get_results_MultiLSTM(X_train, y_train, scaled_data_chunk, X_test_scaled, actual_values, scaler_seq, window_size, batch_size, best_model_specs, n_epoch, lr, N):
+    
+    model_name = "MultiLSTM"
+
+    feature_length = scaled_data_chunk.shape[1]
+
+    optm = tf.keras.optimizers.legacy.Adam(learning_rate=lr)
+
+    # Build the LSTM model with multiple input features
+    model = create_LSTM_Model(window_size, feature_length)
+    model.compile(optimizer=optm, loss='mean_absolute_error')
+    model.fit(X_train, y_train, epochs=n_epoch, batch_size=batch_size, verbose=False)
+
+    print("\n--> Training {} Complete.".format(model_name))
+
+    normalized_test_data_ = np.concatenate((scaled_data_chunk, X_test_scaled), axis=0)
+    next_pred = 0.0
+    forecast = []
+    for i in range(2*N):
+        last_window, normalized_test_data_ = get_sequences(normalized_test_data_, window_size, next_pred, i)
+        next_pred = model.predict(last_window.reshape(1, window_size, feature_length), verbose=False)[0, 0]
+        forecast.append(next_pred)
+        if i == 2*N-1:
+            last_window, normalized_test_data_ = get_sequences(normalized_test_data_, window_size, next_pred, i+1)
+    
+    model_preds = scaler_seq.inverse_transform(normalized_test_data_[-2*N:])
+    model_preds = model_preds[:,0].reshape(-1)
+    forecasted_values = np.nan_to_num(model_preds, nan=0.0)
+    forecasted_values = np.abs(forecasted_values)
+    preds = forecasted_values[:5].reshape(-1)
+    future_values = forecasted_values[5:].reshape(-1)
+
+    # Calculate mean absolute error
+    mae = mean_absolute_error(actual_values, preds)
+
+    print("--> Evaluation for {} Complete.".format(model_name))
+
+    if mae < best_model_specs['mae']:
+        best_model_specs['name'] = model_name
+        best_model_specs['preds'] = preds
+        best_model_specs['future_values'] = future_values
+        best_model_specs['mae'] = mae
+
+        print('Updating best model specs for {}'.format(model_name))
+
+    print()
+
+    return mae, preds, future_values, best_model_specs
+
+
+def get_results_MultiBiLSTM(X_train, y_train, scaled_data_chunk, X_test_scaled, actual_values, scaler_seq, window_size, batch_size, best_model_specs, n_epoch, lr, N):
+    
+    model_name = "MultiBiLSTM"
+
+    feature_length = scaled_data_chunk.shape[1]
+
+    optm = tf.keras.optimizers.legacy.Adam(learning_rate=lr)
+
+    # Build the LSTM model with multiple input features
+    model = create_BiLSTM_Model(window_size, feature_length)
+    model.compile(optimizer=optm, loss='mean_absolute_error')
+    model.fit(X_train, y_train, epochs=n_epoch, batch_size=batch_size, verbose=False)
+
+    print("\n--> Training {} Complete.".format(model_name))
+
+    normalized_test_data_ = np.concatenate((scaled_data_chunk, X_test_scaled), axis=0)
+    next_pred = 0.0
+    forecast = []
+    for i in range(2*N):
+        last_window, normalized_test_data_ = get_sequences(normalized_test_data_, window_size, next_pred, i)
+        next_pred = model.predict(last_window.reshape(1, window_size, feature_length), verbose=False)[0, 0]
+        forecast.append(next_pred)
+        if i == 2*N-1:
+            last_window, normalized_test_data_ = get_sequences(normalized_test_data_, window_size, next_pred, i+1)
+    
+    model_preds = scaler_seq.inverse_transform(normalized_test_data_[-2*N:])
+    model_preds = model_preds[:,0].reshape(-1)
+    forecasted_values = np.nan_to_num(model_preds, nan=0.0)
+    forecasted_values = np.abs(forecasted_values)
+    preds = forecasted_values[:5].reshape(-1)
+    future_values = forecasted_values[5:].reshape(-1)
+
+    # Calculate mean absolute error
+    mae = mean_absolute_error(actual_values, preds)
+
+    print("--> Evaluation for {} Complete.".format(model_name))
+
+    if mae < best_model_specs['mae']:
+        best_model_specs['name'] = model_name
+        best_model_specs['preds'] = preds
+        best_model_specs['future_values'] = future_values
+        best_model_specs['mae'] = mae
+
+        print('Updating best model specs for {}'.format(model_name))
+
+    print()
+
+    return mae, preds, future_values, best_model_specs
+
+
+def get_results_transformer(X_train, y_train, scaled_data_chunk, X_test_scaled, actual_values, scaler_seq, window_size, batch_size, best_model_specs, n_epoch, lr, N):
+    
+    model_name = "transformer"
+
+    feature_length = scaled_data_chunk.shape[1]
+
+    optm = tf.keras.optimizers.legacy.Adam(learning_rate=lr)
+
+    # Build the LSTM model with multiple input features
+    model = create_transformer_model(window_size, feature_length)
+    model.compile(optimizer=optm, loss='mean_absolute_error')
+    model.fit(X_train, y_train, epochs=n_epoch, batch_size=batch_size, verbose=False)
+
+    print("\n--> Training {} Complete.".format(model_name))
+
+    normalized_test_data_ = np.concatenate((scaled_data_chunk, X_test_scaled), axis=0)
+    next_pred = 0.0
+    forecast = []
+    for i in range(2*N):
+        last_window, normalized_test_data_ = get_sequences(normalized_test_data_, window_size, next_pred, i)
+        next_pred = model.predict(last_window.reshape(1, window_size, feature_length), verbose=False)[0, 0]
+        forecast.append(next_pred)
+        if i == 2*N-1:
+            last_window, normalized_test_data_ = get_sequences(normalized_test_data_, window_size, next_pred, i+1)
+    
+    model_preds = scaler_seq.inverse_transform(normalized_test_data_[-2*N:])
+    model_preds = model_preds[:,0].reshape(-1)
+    forecasted_values = np.nan_to_num(model_preds, nan=0.0)
+    forecasted_values = np.abs(forecasted_values)
+    preds = forecasted_values[:5].reshape(-1)
+    future_values = forecasted_values[5:].reshape(-1)
+
+    # Calculate mean absolute error
+    mae = mean_absolute_error(actual_values, preds)
+
+    print("--> Evaluation for {} Complete.".format(model_name))
+
+    if mae < best_model_specs['mae']:
+        best_model_specs['name'] = model_name
+        best_model_specs['preds'] = preds
+        best_model_specs['future_values'] = future_values
+        best_model_specs['mae'] = mae
+
+        print('Updating best model specs for {}'.format(model_name))
+
+    print()
+
+    return mae, preds, future_values, best_model_specs
+
+
+def get_results_rolling_window(trainX, trainY, actual_values, best_model_specs, N):
+    top_locality = None  # To store the locality with the highest correlation
+    best_window = None  # To store the range of the best window
+    best_correlation = -1.0  # To store the maximum correlation found so far
+
+    check_window = pd.Series(trainY[-13:].values.flatten())  # Last 13 weeks of trainY
+
+    # Iterate over columns in trainX
+    for column in trainX.columns:
+        max_correlation = -1.0  # To store the maximum correlation found for the current column
+        max_window = None  # To store the range of the window with the maximum correlation
+
+        # Iterate over each week in the column
+        for i in range(len(trainX) - 12 - 2*N):
+            current_window = trainX[column].values[i:i+13]  # Extract the window of 13 weeks
+
+            # Calculate correlation between check_window and current_window
+            correlation = check_window.corr(pd.Series(current_window.flatten()))
+
+            # Update the maximum correlation and window if necessary
+            if correlation > max_correlation:
+                max_correlation = correlation
+                max_window = (i, i+12)  # Store the start and end indices of the window
+
+        # Update the best locality, window, and correlation if necessary
+        if max_correlation > best_correlation:
+            best_correlation = max_correlation
+            top_locality = column
+            best_window = max_window
+
+    # Step 4: Forecasting
+    prediction_last_nonzero = np.zeros(N)
+    prediction_mean = np.zeros(N)
+    next_5_weeks_last_nonzero = np.zeros(N)
+    next_5_weeks_mean = np.zeros(N)
+
+    if top_locality is not None and best_window is not None:
+        check_window = np.array(check_window)
+        matched_window = np.array(trainX[top_locality].values[best_window[0]:best_window[1]].flatten())
+        forecast_window = np.array(trainX[top_locality].values[best_window[1]+1 : best_window[1]+N+1].flatten())  # Next 5 weeks after the best window
+        roll_next_5_weeks = np.array(trainX[top_locality].values[best_window[1]+N+1 : best_window[1]+2*N+1].flatten())
+        try:
+            diff_last_nonzero, diff_nonzero_mean = calculate_array_differences(matched_window, check_window)
+
+            prediction_last_nonzero =  np.abs(forecast_window - diff_last_nonzero)
+            next_5_weeks_last_nonzero =  np.abs(roll_next_5_weeks - diff_last_nonzero)
+            prediction_mean =  np.abs(forecast_window - diff_nonzero_mean)
+            next_5_weeks_mean = np.abs(roll_next_5_weeks - diff_nonzero_mean)
+        except:
+            pass
+
+    prediction_last_nonzero = np.nan_to_num(prediction_last_nonzero, nan=0.0)
+    prediction_mean = np.nan_to_num(prediction_mean, nan=0.0)
+    mae_last_nonzero = mean_absolute_error(actual_values, prediction_last_nonzero)
+    mae_mean = mean_absolute_error(actual_values, prediction_mean)
+
+    print("--> Evaluation for rolling_window Complete.")
+
+    if mae_mean < best_model_specs['mae']:
+        best_model_specs['name'] = "rolling_mean"
+        best_model_specs['preds'] = prediction_mean
+        best_model_specs['future_values'] = next_5_weeks_mean
+        best_model_specs['mae'] = mae_mean
+
+        print('Updating best model specs for rolling_mean')
+    
+    if mae_last_nonzero < best_model_specs['mae']:
+        best_model_specs['name'] = "rolling_last_nonzero"
+        best_model_specs['preds'] = prediction_last_nonzero
+        best_model_specs['future_values'] = next_5_weeks_last_nonzero
+        best_model_specs['mae'] = mae_last_nonzero
+
+        print('Updating best model specs for rolling_last_nonzero')
+
+    print()
+
+    return mae_mean, prediction_mean.reshape(-1), next_5_weeks_mean.reshape(-1), mae_last_nonzero, prediction_last_nonzero.reshape(-1), next_5_weeks_last_nonzero.reshape(-1), best_model_specs
+
+
+def get_results_comb(model_name, mae1, preds1, futures1, mae2, preds2, futures2, actual_values, best_model_specs):
+    total = mae1 + mae2
+    if (total < 0.0001) or (np.isnan(total)):
+        total = 0.0001
+        
+    perc1 = 1 - (mae1 / total)
+    perc2 = 1 - (mae2 / total)
+    preds_comb = np.array(perc1 * np.array(preds1)) + np.array(perc2 * np.array(preds2))
+    future_comb = np.array(perc1 * np.array(futures1)) + np.array(perc2 * np.array(futures2))
+    preds_comb = np.nan_to_num(preds_comb, nan=0.0)
+
+    mae = mean_absolute_error(actual_values, preds_comb)
+
+    print("--> Evaluation for {} Complete.".format(model_name))
+
+    if mae < best_model_specs['mae']:
+        best_model_specs['name'] = model_name
+        best_model_specs['preds'] = preds_comb
+        best_model_specs['future_values'] = future_comb
+        best_model_specs['mae'] = mae
+
+        print('Updating best model specs for {}'.format(model_name))
+
+    print()
+
+    return mae, preds_comb, future_comb, best_model_specs
+
+
 def get_N_forecasts(df, given_locality = 13677, N = 5, top_k = 10, lr = 1e-3, n_epoch = 200, window_size=10, batch_size=8, output_all='all_results.csv', output_best='best_results.csv', training_history = 'training_history.csv'):
 
     print("#"*100)
@@ -589,72 +1018,26 @@ def get_N_forecasts(df, given_locality = 13677, N = 5, top_k = 10, lr = 1e-3, n_
         last_week_data = given_locality_df[given_locality_df['value'] != 0].tail(1).reset_index(drop=True)
         year = last_week_data.year.min()
         week = last_week_data[last_week_data["year"] == year]['week'].min()
+        latest_lice_value = last_week_data['value'].values[0]
 
         # Filter the data for the specific week and year
         week_year_data = pd.DataFrame()
         week_year_data = pd.concat([week_year_data, given_locality_df[given_locality_df['year'] < year]])
-        week_year_data = pd.concat([week_year_data, given_locality_df[(given_locality_df['week'] < week) & (given_locality_df['year'] == year)]])
+        week_year_data = pd.concat([week_year_data, given_locality_df[(given_locality_df['week'] <= week) & (given_locality_df['year'] == year)]])
 
         given_locality_df = week_year_data.copy()
 
-        # Calculate the correlation coefficients for each locality
-        correlation_coeffs = {}
-        for locality in df['localityNo'].unique():
-            if locality != given_locality:
-
-                locality_df = df[df['localityNo'] == locality]
-                # Filter the data for the specific week and year
-                week_year_data = pd.DataFrame()
-                week_year_data = pd.concat([week_year_data, locality_df[locality_df['year'] < year]])
-                week_year_data = pd.concat([week_year_data, locality_df[(locality_df['week'] < week) & (locality_df['year'] == year)]])
-                locality_df = week_year_data.copy()
-
-                std_given_locality = given_locality_df['value'].std()
-                std_locality = locality_df['value'].std()
-                if std_given_locality != 0 and std_locality != 0:
-                    correlation = np.corrcoef(given_locality_df['value'], locality_df['value'], rowvar=False)[0, 1]
-                    correlation_coeffs[locality] = correlation
-
-        # Sort the correlation coefficients in descending order and get the top K correlated localities
-        top_k_correlated = sorted(correlation_coeffs.items(), key=lambda x: x[1], reverse=True)[:top_k]
-
         # Extract the localityNos from the top K correlated localities
-        top_k_localities = [locality for locality, _ in top_k_correlated]
+        top_k_localities = get_top_K_localities(given_locality, given_locality_df, df, year, week, top_k)
 
-        # print("\nTop {} most correlated localities:".format(top_k))
-        # for locality in top_k_localities:
-        #     print(locality)
+        best_model_specs = {}
+        best_model_specs['name'] = "none"
+        best_model_specs['preds'] = np.zeros(5)
+        best_model_specs['future_values'] = np.zeros(5)
+        best_model_specs['mae'] = 100
 
-
-        ################################ Preparing DATA ################################
-        # Create a DataFrame to store the training data
-        data = pd.DataFrame()
-        # Iterate over each week to prepare the training data
-        for locality in (list(top_k_localities) + [given_locality]):
-            filtered_locality_df = df[df["localityNo"] == locality]
-            # Filter the data for the specific week and year
-            week_year_data = pd.DataFrame()
-            week_year_data = pd.concat([week_year_data, filtered_locality_df[filtered_locality_df['year'] < year]])
-            week_year_data = pd.concat([week_year_data, filtered_locality_df[(filtered_locality_df['week'] < week) & (filtered_locality_df['year'] == year)]])
-
-            if (locality == given_locality):
-                data['value'] = list(week_year_data["value"])+[0]*5
-                data["temperature"] = [0]*5+list(week_year_data["temperature"])
-                data["mechanicalTreatment"] = [0]*5+list(week_year_data["mechanicalTreatment"])
-                data["mechanicalEntirity"] = [0]*5+list(week_year_data["mechanicalEntirity"])
-                data["chemicalTreatment"] = [0]*5+list(week_year_data["chemicalTreatment"])
-                data["chemicalEntirity"] = [0]*5+list(week_year_data["chemicalEntirity"])
-                data["avgMobileLice"] = [0]*5+list(week_year_data["avgMobileLice"])
-                data["avgStationaryLice"] = [0]*5+list(week_year_data["avgStationaryLice"])
-            else:
-                data[str(locality)] = [0]*5+list(week_year_data["value"])
-                data[str(locality) + "_temperature"] = [0]*5+list(week_year_data["temperature"])
-                data[str(locality) + "_mechanicalTreatment"] = [0]*5+list(week_year_data["mechanicalTreatment"])
-                data[str(locality) + "_mechanicalEntirity"] = [0]*5+list(week_year_data["mechanicalEntirity"])
-                data[str(locality) + "_chemicalTreatment"] = [0]*5+list(week_year_data["chemicalTreatment"])
-                data[str(locality) + "_chemicalEntirity"] = [0]*5+list(week_year_data["chemicalEntirity"])
-                data[str(locality) + "_avgMobileLice"] = [0]*5+list(week_year_data["avgMobileLice"])
-                data[str(locality) + "_avgStationaryLice"] = [0]*5+list(week_year_data["avgStationaryLice"])
+        # Create a DataFrame to store the all data for given locality
+        data = prepare_dataset(df, given_locality, top_k_localities, year, week)
 
         ################################ Preparing TRAINING DATA ################################
         # Create a DataFrame to store the training data
@@ -663,390 +1046,90 @@ def get_N_forecasts(df, given_locality = 13677, N = 5, top_k = 10, lr = 1e-3, n_
         y_train = training_data['value']
         training_data = training_data.drop('value', axis=1)
         # Standardize the training features
-        scaler = StandardScaler()
-        X_train_scaled = scaler.fit_transform(training_data)
+        scaler_M2 = StandardScaler()
+        X_train_scaled_M2 = scaler_M2.fit_transform(training_data)
 
         ################################ Preparing TESTING DATA ################################
         # Create a DataFrame to store the training data
         testing_data = data.tail(2*N).copy()
 
-        y_test = testing_data['value'].values
+        actual_values = testing_data['value'].values[:N]
+        actual_values = actual_values.reshape(-1)
         testing_data = testing_data.drop('value', axis=1)
 
         # Standardize the testing features
-        X_test_scaled = scaler.transform(testing_data)
+        X_test_scaled_M2 = scaler_M2.transform(testing_data)
 
-
-        ################################ TRAINING LR MODEL ################################
-        # Train a linear regression model
-        modelLR = LinearRegression()
-        modelLR.fit(X_train_scaled, y_train)
-
-        print("\n--> Training LR Complete.")
-
-        ################################ TRAINING NN MODEL ################################
-        optm = tf.keras.optimizers.legacy.Adam(learning_rate=lr)
-
-        # Train a neural network model
-        modelNN = Sequential()
-        modelNN.add(Dense(64, activation='relu', input_shape=(training_data.shape[1],)))
-        modelNN.add(Dense(64, activation='relu'))
-        modelNN.add(Dense(1))
-        modelNN.compile(optimizer=optm, loss='mean_squared_error')
-        modelNN.fit(X_train_scaled, y_train, epochs=n_epoch, verbose=0)
-
-        print("\n--> Training NN Complete.")
-
-        ################################ TRAINING NN2 MODEL ################################
-        # Train a more complex neural network model
-        modelNN2 = Sequential()
-        modelNN2.add(Dense(128, activation='sigmoid', input_shape=(training_data.shape[1],)))
-        modelNN2.add(Dense(64, activation='sigmoid'))
-        modelNN2.add(Dense(8, activation='sigmoid'))
-        modelNN2.add(Dense(1))
-        modelNN2.compile(optimizer=optm, loss='mean_squared_error')
-        modelNN2.fit(X_train_scaled, y_train, epochs=n_epoch, verbose=0)
-
-        print("\n--> Training NN2 Complete.\n")
-
-
-        ################################ TESTING LR MODEL ################################
-        # Predict the values for the given locality using the model
-        forecasted_valuesLR = modelLR.predict(X_test_scaled)
-        forecasted_valuesLR = np.absolute(forecasted_valuesLR)
-        # forecasted_valuesLR[forecasted_valuesLR < 0.0] = 0.0
-
-        # Calculate mean absolute error and R^2 score
-        maeLR = mean_absolute_error(y_test[:5], forecasted_valuesLR[:5])
-
-
-        ################################ TESTING NN MODEL ################################
-        # Predict the values for the given locality using the model
-        forecasted_valuesNN = modelNN.predict(X_test_scaled).flatten()
-        forecasted_valuesNN = np.absolute(forecasted_valuesNN)
-        # forecasted_valuesNN[forecasted_valuesNN < 0.0] = 0.0
-
-        # Calculate mean absolute error and R^2 score
-        maeNN = mean_absolute_error(y_test[:5], forecasted_valuesNN[:5])
-
-        ################################ TESTING NN MODEL ################################
-        # Predict the values for the given locality using the model
-        forecasted_valuesNN2 = modelNN2.predict(X_test_scaled).flatten()
-        forecasted_valuesNN2 = np.absolute(forecasted_valuesNN2)
-        # forecasted_valuesNN2[forecasted_valuesNN2 < 0.0] = 0.0
-
-        # Calculate mean absolute error and R^2 score
-        maeNN2 = mean_absolute_error(y_test[:5], forecasted_valuesNN2[:5])
+        ################################ Getting Results for M2 MODELs ################################
+        mae_LR, preds_LR, future_LR, best_model_specs = get_results_LR(X_train_scaled_M2, y_train, X_test_scaled_M2, actual_values, best_model_specs, N)
+        mae_NN, preds_NN, future_NN, best_model_specs = get_results_NN(X_train_scaled_M2, y_train, X_test_scaled_M2, actual_values, best_model_specs, n_epoch, lr, N)
+        mae_NN2, preds_NN2, future_NN2, best_model_specs = get_results_NN2(X_train_scaled_M2, y_train, X_test_scaled_M2, actual_values, best_model_specs, n_epoch, lr, N)
 
 
         ##############################################################################################################
         ##############################################################################################################
 
-        ################################ Preparing TRAINING DATA ################################
+        ################################ Preparing Sequential TRAINING DATA ################################
         # Create a DataFrame to store the training data
         data_sequential = data[['value', 'temperature', 'mechanicalTreatment', 'mechanicalEntirity', 'chemicalTreatment', 'chemicalEntirity', 'avgMobileLice', 'avgStationaryLice']]
         training_data = data_sequential.iloc[5:-5].copy()
 
-        ################################ Multivariate LSTM ################################
-        # Combine target variable and features for multivariate data
         multivariate_train_data = training_data.values
 
-        # Normalize the data
-        scaler = MinMaxScaler(feature_range=(0, 1))
-        normalized_train_data = scaler.fit_transform(multivariate_train_data)
+        scaler_seq = StandardScaler()
+        X_train_scaled_M4 = scaler_seq.fit_transform(multivariate_train_data)
+        X_trained_scaled_chunk = X_train_scaled_M4[-(window_size+N):-N]
 
-        X_train, y_train = generate_multivariate_sequences(normalized_train_data, window_size)
+        X_train, y_train = generate_multivariate_sequences(X_train_scaled_M4, window_size)
 
-        # Build the LSTM model with multiple input features
-        model_MultiLSTM = create_LSTM_Model(window_size, multivariate_train_data.shape[1])
-        model_MultiLSTM.compile(loss='mean_squared_error', optimizer='adam')
-        model_MultiLSTM.fit(X_train, y_train, epochs=n_epoch, batch_size=batch_size, verbose=False)
 
-        print("\n--> Training MultiLSTM Complete.\n")
-
-        # Build the BiLSTM model with multiple input features
-        model_MultiBiLSTM = create_BiLSTM_Model(window_size, multivariate_train_data.shape[1])
-        model_MultiBiLSTM.compile(loss='mean_squared_error', optimizer='adam')
-        model_MultiBiLSTM.fit(X_train, y_train, epochs=n_epoch, batch_size=batch_size, verbose=False)
-
-        print("\n--> Training MutliBiLSTM Complete.\n")
-
-        # Build the Transformer model with multiple input features
-        model_Transformer = create_transformer_model(window_size, multivariate_train_data.shape[1])
-        model_Transformer.compile(loss='mean_squared_error', optimizer='adam')
-        model_Transformer.fit(X_train, y_train, epochs=n_epoch, batch_size=batch_size, verbose=False)
-
-        print("\n--> Training Transformer Complete.\n")
-
-        ################################ Preparing TESTING DATA ################################
+        ################################ Preparing Sequential TESTING DATA ################################
         # Create a DataFrame to store the testing data
         testing_data = data_sequential.tail(2*N).copy()
-        y_test = testing_data['value'].values.flatten()
 
-        ################################ TESTING LSTM MODEL ################################
-        # Prepare testing data for multivariate LSTM
         multivariate_test_data = testing_data.values
-        normalized_test_data = scaler.transform(multivariate_test_data)
-
-        normalized_test_data[:,:N] = np.zeros(N)
-
-        normalized_test_data_ = np.concatenate((normalized_train_data[-(window_size+N):-N], normalized_test_data), axis=0)
-        next_pred = 0.0
-        forecast = []
-        for i in range(2*N):
-            last_window, normalized_test_data_ = get_sequences(normalized_test_data_, window_size, next_pred, i)
-            next_pred = model_MultiLSTM.predict(last_window.reshape(1, window_size, multivariate_train_data.shape[1]), verbose=False)[0, 0]
-            forecast.append(next_pred)
-            if i == 2*N-1:
-                last_window, normalized_test_data_ = get_sequences(normalized_test_data_, window_size, next_pred, i+1)
-        model_MultiLSTM_preds = scaler.inverse_transform(normalized_test_data_[-2*N:])
-        forecast_values_MultiLSTM = np.abs(model_MultiLSTM_preds[:,0].reshape(-1))
-        forecast_values_MultiLSTM = np.nan_to_num(forecast_values_MultiLSTM, nan=0.0)
-        # Calculate mean absolute error
-        mae_MultiLSTM = mean_absolute_error(y_test[:N], forecast_values_MultiLSTM[:N])
-
-        normalized_test_data_ = np.concatenate((normalized_train_data[-(window_size+N):-N], normalized_test_data), axis=0)
-        next_pred = 0.0
-        forecast = []
-        for i in range(2*N):
-            last_window, normalized_test_data_ = get_sequences(normalized_test_data_, window_size, next_pred, i)
-            next_pred = model_MultiBiLSTM.predict(last_window.reshape(1, window_size, multivariate_train_data.shape[1]), verbose=False)[0, 0]
-            forecast.append(next_pred)
-            if i == 2*N-1:
-                last_window, normalized_test_data_ = get_sequences(normalized_test_data_, window_size, next_pred, i+1)
-        model_MultiBiLSTM_preds = scaler.inverse_transform(normalized_test_data[-2*N:])
-        forecast_values_MultiBiLSTM = np.abs(model_MultiBiLSTM_preds[:,0].reshape(-1))
-        forecast_values_MultiBiLSTM = np.nan_to_num(forecast_values_MultiBiLSTM, nan=0.0)
-        # Calculate mean absolute error
-        mae_MultiBiLSTM = mean_absolute_error(y_test[:N], forecast_values_MultiBiLSTM[:N])
+        X_test_scaled_M4 = scaler_seq.transform(multivariate_test_data)
+        X_test_scaled_M4[:,:N] = np.zeros(N)
 
 
-        normalized_test_data_ = np.concatenate((normalized_train_data[-(window_size+N):-N], normalized_test_data), axis=0)
-        next_pred = 0.0
-        forecast = []
-        for i in range(2*N):
-            last_window, normalized_test_data_ = get_sequences(normalized_test_data_, window_size, next_pred, i)
-            next_pred = model_Transformer.predict(last_window.reshape(1, window_size, multivariate_train_data.shape[1]), verbose=False)[0, 0]
-            forecast.append(next_pred)
-            if i == 2*N-1:
-                last_window, normalized_test_data_ = get_sequences(normalized_test_data_, window_size, next_pred, i+1)
-        model_Transformer_preds = scaler.inverse_transform(normalized_test_data[-2*N:])
-        forecast_values_Transformer = np.abs(model_Transformer_preds[:,0].reshape(-1))
-        forecast_values_Transformer = np.nan_to_num(forecast_values_Transformer, nan=0.0)
-        # Calculate mean absolute error
-        mae_Transformer = mean_absolute_error(y_test[:N], forecast_values_Transformer[:N])
+        ################################ Getting Results for M4 MODELs ################################
+        mae_MultiLSTM, preds_MultiLSTM, future_MultiLSTM, best_model_specs = get_results_MultiLSTM(X_train, y_train, X_trained_scaled_chunk, X_test_scaled_M4, actual_values, scaler_seq, window_size, batch_size, best_model_specs, n_epoch, lr, N)
+        mae_MultiBiLSTM, preds_MultiBiLSTM, future_MultiBiLSTM, best_model_specs = get_results_MultiBiLSTM(X_train, y_train, X_trained_scaled_chunk, X_test_scaled_M4, actual_values, scaler_seq, window_size, batch_size, best_model_specs, n_epoch, lr, N)
+        mae_transformer, preds_transformer, future_transformer, best_model_specs = get_results_transformer(X_train, y_train, X_trained_scaled_chunk, X_test_scaled_M4, actual_values, scaler_seq, window_size, batch_size, best_model_specs, n_epoch, lr, N)
+        
 
         ##############################################################################################################
         ##############################################################################################################
-
+        
+        ################################ Preparing Rolling Window TRAINING DATA ################################
+        
         data_rolling = data[['value'] + [str(loc) for loc in top_k_localities]]
         training_data = data_rolling.iloc[5:-5].copy()
         trainY = training_data['value']
         trainX = training_data[[str(loc) for loc in top_k_localities]]
 
-        testing_data = data_rolling.tail(2*N).copy()
-        y_test = testing_data['value'].values.flatten()
 
-        # Step 3: Rolling window correlation
-        top_locality = None  # To store the locality with the highest correlation
-        best_window = None  # To store the range of the best window
-        best_correlation = -1.0  # To store the maximum correlation found so far
-
-        check_window = pd.Series(trainY[-13:].values.flatten())  # Last 13 weeks of trainY
-
-        # Iterate over columns in trainX
-        for column in trainX.columns:
-            max_correlation = -1.0  # To store the maximum correlation found for the current column
-            max_window = None  # To store the range of the window with the maximum correlation
-
-            # Iterate over each week in the column
-            for i in range(len(trainX) - 12 - 2*N):
-                current_window = trainX[column].values[i:i+13]  # Extract the window of 13 weeks
-
-                # Calculate correlation between check_window and current_window
-                correlation = check_window.corr(pd.Series(current_window.flatten()))
-
-                # Update the maximum correlation and window if necessary
-                if correlation > max_correlation:
-                    max_correlation = correlation
-                    max_window = (i, i+12)  # Store the start and end indices of the window
-
-            # Update the best locality, window, and correlation if necessary
-            if max_correlation > best_correlation:
-                best_correlation = max_correlation
-                top_locality = column
-                best_window = max_window
-
-        # Step 4: Forecasting
-        prediction_last_nonzero = np.zeros(N)
-        prediction_mean = np.zeros(N)
-        next_5_weeks_last_nonzero = np.zeros(N)
-        next_5_weeks_mean = np.zeros(N)
-
-        if top_locality is not None and best_window is not None:
-            check_window = np.array(check_window)
-            matched_window = np.array(trainX[top_locality].values[best_window[0]:best_window[1]].flatten())
-            forecast_window = np.array(trainX[top_locality].values[best_window[1]+1 : best_window[1]+N+1].flatten())  # Next 5 weeks after the best window
-            roll_next_5_weeks = np.array(trainX[top_locality].values[best_window[1]+N+1 : best_window[1]+2*N+1].flatten())
-            try:
-                diff_last_nonzero, diff_nonzero_mean = calculate_array_differences(matched_window, check_window)
-
-                prediction_last_nonzero =  np.abs(forecast_window - diff_last_nonzero)
-                next_5_weeks_last_nonzero =  np.abs(roll_next_5_weeks - diff_last_nonzero)
-                prediction_mean =  np.abs(forecast_window - diff_nonzero_mean)
-                next_5_weeks_mean = np.abs(roll_next_5_weeks - diff_nonzero_mean)
-            except:
-                pass
-
-        prediction_last_nonzero = np.nan_to_num(prediction_last_nonzero, nan=0.0)
-        prediction_mean = np.nan_to_num(prediction_mean, nan=0.0)
-        mae_last_nonzero = mean_absolute_error(y_test[:N], prediction_last_nonzero)
-        mae_mean = mean_absolute_error(y_test[:N], prediction_mean)
-
-        print("\n--> Training Rolling Window Complete.\n")
+        mae_mean, preds_mean, future_mean, mae_lastNonZero, preds_lastNonZero, future_lastNonZero, best_model_specs = get_results_rolling_window(trainX, trainY, actual_values, best_model_specs, N)
 
         ##############################################################################################################
         ##############################################################################################################
-        total = maeNN + mae_mean
-        if (total < 0.0001) or (np.isnan(total)):
-            total = 0.0001
-        perc_NN = 1 - (maeNN / total)
-        perc_mean = 1 - (mae_mean / total)
-        prediction_NN_mean = (perc_NN * np.array(forecasted_valuesNN[:N])) + (perc_mean * np.array(prediction_mean))
-        last5weeks_NN_mean = (perc_NN * np.array(forecasted_valuesNN[N:])) + (perc_mean * np.array(next_5_weeks_mean))
-        prediction_NN_mean = np.nan_to_num(prediction_NN_mean, nan=0.0)
-        mae_NN_mean = mean_absolute_error(y_test[:N], prediction_NN_mean)
+        
+        mae_mean_NN, preds_mean_NN, future_mean_NN, best_model_specs = get_results_comb("mean_NN", mae_mean, preds_mean, future_mean, mae_NN, preds_NN, future_NN, actual_values, best_model_specs)
+        mae_lastNonZero_NN, preds_lastNonZero_NN, future_lastNonZero_NN, best_model_specs = get_results_comb("lastNonZero_NN", mae_lastNonZero, preds_lastNonZero, future_lastNonZero, mae_NN, preds_NN, future_NN, actual_values, best_model_specs)
 
-        total = maeNN + mae_last_nonzero
-        if (total < 0.0001) or (np.isnan(total)):
-            total = 0.0001
-        perc_NN = 1 - (maeNN / total)
-        perc_last_nonzero = 1 - (mae_last_nonzero / total)
-        prediction_NN_last_nonzero = (perc_NN * np.array(forecasted_valuesNN[:N])) + (perc_last_nonzero * np.array(prediction_last_nonzero))
-        last5weeks_NN_last_nonzero = (perc_NN * np.array(forecasted_valuesNN[N:])) + (perc_last_nonzero * np.array(next_5_weeks_last_nonzero))
-        prediction_NN_last_nonzero = np.nan_to_num(prediction_NN_last_nonzero, nan=0.0)
-        mae_NN_last_nonzero = mean_absolute_error(y_test[:N], prediction_NN_last_nonzero)
+        mae_mean_NN2, preds_mean_NN2, future_mean_NN2, best_model_specs = get_results_comb("mean_NN2", mae_mean, preds_mean, future_mean, mae_NN2, preds_NN2, future_NN2, actual_values, best_model_specs)
+        mae_lastNonZero_NN2, preds_lastNonZero_NN2, future_lastNonZero_NN2, best_model_specs = get_results_comb("lastNonZero_NN2", mae_lastNonZero, preds_lastNonZero, future_lastNonZero, mae_NN2, preds_NN2, future_NN2, actual_values, best_model_specs)
 
+        mae_mean_MultiLSTM, preds_mean_MultiLSTM, future_mean_MultiLSTM, best_model_specs = get_results_comb("mean_MultiLSTM", mae_mean, preds_mean, future_mean, mae_MultiLSTM, preds_MultiLSTM, future_MultiLSTM, actual_values, best_model_specs)
+        mae_lastNonZero_MultiLSTM, preds_lastNonZero_MultiLSTM, future_lastNonZero_MultiLSTM, best_model_specs = get_results_comb("lastNonZero_MultiLSTM", mae_lastNonZero, preds_lastNonZero, future_lastNonZero, mae_MultiLSTM, preds_MultiLSTM, future_MultiLSTM, actual_values, best_model_specs)
 
-        total = maeNN2 + mae_mean
-        if (total < 0.0001) or (np.isnan(total)):
-            total = 0.0001
-        perc_NN2 = 1 - (maeNN2 / total)
-        perc_mean = 1 - (mae_mean / total)
-        prediction_NN2_mean = (perc_NN2 * np.array(forecasted_valuesNN2[:N])) + (perc_mean * np.array(prediction_mean))
-        last5weeks_NN2_mean = (perc_NN2 * np.array(forecasted_valuesNN2[N:])) + (perc_mean * np.array(next_5_weeks_mean))
-        prediction_NN2_mean = np.nan_to_num(prediction_NN2_mean, nan=0.0)
-        mae_NN2_mean = mean_absolute_error(y_test[:N], prediction_NN2_mean)
+        mae_mean_MultiBiLSTM, preds_mean_MultiBiLSTM, future_mean_MultiBiLSTM, best_model_specs = get_results_comb("mean_MultiBiLSTM", mae_mean, preds_mean, future_mean, mae_MultiBiLSTM, preds_MultiBiLSTM, future_MultiBiLSTM, actual_values, best_model_specs)
+        mae_lastNonZero_MultiBiLSTM, preds_lastNonZero_MultiBiLSTM, future_lastNonZero_MultiBiLSTM, best_model_specs = get_results_comb("lastNonZero_MultiBiLSTM", mae_lastNonZero, preds_lastNonZero, future_lastNonZero, mae_MultiBiLSTM, preds_MultiBiLSTM, future_MultiBiLSTM, actual_values, best_model_specs)
 
-        total = maeNN2 + mae_last_nonzero
-        if (total < 0.0001) or (np.isnan(total)):
-            total = 0.0001
-        perc_NN2 = 1 - (maeNN2 / total)
-        perc_last_nonzero = 1 - (mae_last_nonzero / total)
-        prediction_NN2_last_nonzero = (perc_NN2 * np.array(forecasted_valuesNN2[:N])) + (perc_last_nonzero * np.array(prediction_last_nonzero))
-        last5weeks_NN2_last_nonzero = (perc_NN2 * np.array(forecasted_valuesNN2[N:])) + (perc_last_nonzero * np.array(next_5_weeks_last_nonzero))
-        prediction_NN2_last_nonzero = np.nan_to_num(prediction_NN2_last_nonzero, nan=0.0)
-        mae_NN2_last_nonzero = mean_absolute_error(y_test[:N], prediction_NN2_last_nonzero)
-
-
-
-        total = mae_MultiLSTM + mae_mean
-        if (total < 0.0001) or (np.isnan(total)):
-            total = 0.0001
-        perc_MultiLSTM = 1 - (mae_MultiLSTM / total)
-        perc_mean = 1 - (mae_mean / total)
-        prediction_MultiLSTM_mean = (perc_MultiLSTM * np.array(forecast_values_MultiLSTM[:N])) + (perc_mean * np.array(prediction_mean))
-        last5weeks_MultiLSTM_mean = (perc_MultiLSTM * np.array(forecast_values_MultiLSTM[N:])) + (perc_mean * np.array(next_5_weeks_mean))
-        prediction_MultiLSTM_mean = np.nan_to_num(prediction_MultiLSTM_mean, nan=0.0)
-        mae_MultiLSTM_mean = mean_absolute_error(y_test[:N], prediction_MultiLSTM_mean)
-
-        total = mae_MultiLSTM + mae_last_nonzero
-        if (total < 0.0001) or (np.isnan(total)):
-            total = 0.0001
-        perc_MultiLSTM = 1 - (mae_MultiLSTM / total)
-        perc_last_nonzero = 1 - (mae_last_nonzero / total)
-        prediction_MultiLSTM_last_nonzero = (perc_MultiLSTM * np.array(forecast_values_MultiLSTM[:N])) + (perc_last_nonzero * np.array(prediction_last_nonzero))
-        last5weeks_MultiLSTM_last_nonzero = (perc_MultiLSTM * np.array(forecast_values_MultiLSTM[N:])) + (perc_last_nonzero * np.array(next_5_weeks_last_nonzero))
-        prediction_MultiLSTM_last_nonzero = np.nan_to_num(prediction_MultiLSTM_last_nonzero, nan=0.0)
-        mae_MultiLSTM_last_nonzero = mean_absolute_error(y_test[:N], prediction_MultiLSTM_last_nonzero)
-
-
-
-        total = mae_MultiBiLSTM + mae_mean
-        if (total < 0.0001) or (np.isnan(total)):
-            total = 0.0001
-        perc_MultiBiLSTM = 1 - (mae_MultiBiLSTM / total)
-        perc_mean = 1 - (mae_mean / total)
-        prediction_MultiBiLSTM_mean = (perc_MultiBiLSTM * np.array(forecast_values_MultiBiLSTM[:N])) + (perc_mean * np.array(prediction_mean))
-        last5weeks_MultiBiLSTM_mean = (perc_MultiBiLSTM * np.array(forecast_values_MultiBiLSTM[N:])) + (perc_mean * np.array(next_5_weeks_mean))
-        prediction_MultiBiLSTM_mean = np.nan_to_num(prediction_MultiBiLSTM_mean, nan=0.0)
-        mae_MultiBiLSTM_mean = mean_absolute_error(y_test[:N], prediction_MultiBiLSTM_mean)
-
-        total = mae_MultiBiLSTM + mae_last_nonzero
-        if (total < 0.0001) or (np.isnan(total)):
-            total = 0.0001
-        perc_MultiBiLSTM = 1 - (mae_MultiBiLSTM / total)
-        perc_last_nonzero = 1 - (mae_last_nonzero / total)
-        prediction_MultiBiLSTM_last_nonzero = (perc_MultiBiLSTM * np.array(forecast_values_MultiBiLSTM[:N])) + (perc_last_nonzero * np.array(prediction_last_nonzero))
-        last5weeks_MultiBiLSTM_last_nonzero = (perc_MultiBiLSTM * np.array(forecast_values_MultiBiLSTM[N:])) + (perc_last_nonzero * np.array(next_5_weeks_last_nonzero))
-        prediction_MultiBiLSTM_last_nonzero = np.nan_to_num(prediction_MultiBiLSTM_last_nonzero, nan=0.0)
-        mae_MultiBiLSTM_last_nonzero = mean_absolute_error(y_test[:N], prediction_MultiBiLSTM_last_nonzero)
-
-
-        total = mae_Transformer + mae_mean
-        if (total < 0.0001) or (np.isnan(total)):
-            total = 0.0001
-        perc_Transformer = 1 - (mae_Transformer / total)
-        perc_mean = 1 - (mae_mean / total)
-        prediction_Transformer_mean = (perc_Transformer * np.array(forecast_values_Transformer[:N])) + (perc_mean * np.array(prediction_mean))
-        last5weeks_Transformer_mean = (perc_Transformer * np.array(forecast_values_Transformer[N:])) + (perc_mean * np.array(next_5_weeks_mean))
-        prediction_Transformer_mean = np.nan_to_num(prediction_Transformer_mean, nan=0.0)
-        mae_Transformer_mean = mean_absolute_error(y_test[:N], prediction_Transformer_mean)
-
-        total = mae_Transformer + mae_last_nonzero
-        if (total < 0.0001) or (np.isnan(total)):
-            total = 0.0001
-        perc_Transformer = 1 - (mae_Transformer / total)
-        perc_last_nonzero = 1 - (mae_last_nonzero / total)
-        prediction_Transformer_last_nonzero = (perc_Transformer * np.array(forecast_values_Transformer[:N])) + (perc_last_nonzero * np.array(prediction_last_nonzero))
-        last5weeks_Transformer_last_nonzero = (perc_Transformer * np.array(forecast_values_Transformer[N:])) + (perc_last_nonzero * np.array(next_5_weeks_last_nonzero))
-        prediction_Transformer_last_nonzero = np.nan_to_num(prediction_Transformer_last_nonzero, nan=0.0)
-        mae_Transformer_last_nonzero = mean_absolute_error(y_test[:N], prediction_Transformer_last_nonzero)
+        mae_mean_transformer, preds_mean_transformer, future_mean_transformer, best_model_specs = get_results_comb("mean_transformer", mae_mean, preds_mean, future_mean, mae_transformer, preds_transformer, future_transformer, actual_values, best_model_specs)
+        mae_lastNonZero_transformer, preds_lastNonZero_transformer, future_lastNonZero_transformer, best_model_specs = get_results_comb("lastNonZero_transformer", mae_lastNonZero, preds_lastNonZero, future_lastNonZero, mae_transformer, preds_transformer, future_transformer, actual_values, best_model_specs)
 
         print("\n--> Training Combined Models Complete.\n")
-
-        # comb = list(arr1 + arr2)
-        # comb_list.append(comb)
-
-
-        ##############################################################################################################
-            ########################################### Best Model ################################################
-
-        all_mae = [maeLR, maeNN, maeNN2, mae_MultiLSTM, mae_MultiBiLSTM, mae_Transformer, mae_mean, mae_last_nonzero, mae_NN_mean,
-        mae_NN_last_nonzero, mae_NN2_mean, mae_NN2_last_nonzero, mae_MultiLSTM_mean, mae_MultiLSTM_last_nonzero,
-        mae_MultiBiLSTM_mean, mae_MultiBiLSTM_last_nonzero, mae_Transformer_mean, mae_Transformer_last_nonzero]
-
-        all_preds = [forecasted_valuesLR[:N], forecasted_valuesNN[:N], forecasted_valuesNN2[:N], forecast_values_MultiLSTM[:N],
-        forecast_values_MultiBiLSTM[:N], forecast_values_Transformer[:N], prediction_mean, prediction_last_nonzero, prediction_NN_mean,
-        prediction_NN_last_nonzero, prediction_NN2_mean, prediction_NN2_last_nonzero, prediction_MultiLSTM_mean,
-        prediction_MultiLSTM_last_nonzero, prediction_MultiBiLSTM_mean, prediction_MultiBiLSTM_last_nonzero,
-        prediction_Transformer_mean, prediction_Transformer_last_nonzero]
-
-        all_next5weeks = [forecasted_valuesLR[N:], forecasted_valuesNN[N:], forecasted_valuesNN2[N:], forecast_values_MultiLSTM[N:],
-        forecast_values_MultiBiLSTM[N:], forecast_values_Transformer[N:], next_5_weeks_mean, next_5_weeks_last_nonzero,
-        last5weeks_NN_mean, last5weeks_NN_last_nonzero, last5weeks_NN2_mean, last5weeks_NN2_last_nonzero, last5weeks_MultiLSTM_mean,
-        last5weeks_MultiLSTM_last_nonzero, last5weeks_MultiBiLSTM_mean, last5weeks_MultiBiLSTM_last_nonzero,
-        last5weeks_Transformer_mean, last5weeks_Transformer_last_nonzero]
-
-        all_models = ['LR', 'NN', 'NN2', 'MultiLSTM', 'MultiBiLSTM', 'Transformer', 'rollingMean', 'rollingLastNonZero', 'NN_mean',
-         'NN_last_nonzero', 'NN2_mean', 'NN2_last_nonzero', 'MultiLSTM_mean', 'MultiLSTM_last_nonzero',
-         'MultiBiLSTM_mean', 'MultiBiLSTM_last_nonzero', 'Transformer_mean', 'Transformer_last_nonzero']
-
-        best_mae = min(all_mae)
-        best_mae_idx = all_mae.index(best_mae)
-        best_preds = all_preds[best_mae_idx]
-        best_next5weeks = all_next5weeks[best_mae_idx]
-        best_model_name = all_models[best_mae_idx]
 
 
         ##############################################################################################################
@@ -1058,7 +1141,7 @@ def get_N_forecasts(df, given_locality = 13677, N = 5, top_k = 10, lr = 1e-3, n_
         avgStationaryLice_threshold_dict = {}
         lice_decay_dict = {}
 
-        preds = best_next5weeks.copy()
+        preds = best_model_specs['future_values'].copy()
 
         lice_threshold = 1000.0
         avgLice_decay_val = 0.0
@@ -1115,7 +1198,9 @@ def get_N_forecasts(df, given_locality = 13677, N = 5, top_k = 10, lr = 1e-3, n_
         if lice_threshold == 1000.0:
             lice_threshold = 0.0
 
-        lice_threshold, avgLice_decay_val, week_for_treatment, todo_treatment
+        weeks_missed = np.zeros(N)
+        weeks_diff = np.abs(np.array(best_model_specs['preds']) - np.array(actual_values))
+        weeks_missed[weeks_diff > 0.1] = 1.0
 
         ##############################################################################################################
         ##############################################################################################################
@@ -1123,89 +1208,96 @@ def get_N_forecasts(df, given_locality = 13677, N = 5, top_k = 10, lr = 1e-3, n_
 
         temp_df = pd.DataFrame({
             "localityNo": [given_locality],
-            "actual_values": [str(y_test[:N])],
+            "actual_values": [str(actual_values)],
             "data_points": [(given_locality_df['value'] != 0).sum()],
 
-            "LR_MAE": [maeLR],
-            "LR_Preds": [str(forecasted_valuesLR[:N])],
-            "LR_next5weeks": [str(forecasted_valuesLR[N:])],
+            "LR_MAE": [mae_LR],
+            "LR_Preds": [str(preds_LR)],
+            "LR_next5weeks": [str(future_LR)],
 
-            "NN_MAE": [maeNN],
-            "NN_Preds": [str(forecasted_valuesNN[:N])],
-            "NN_next5weeks": [str(forecasted_valuesNN[N:])],
+            "NN_MAE": [mae_NN],
+            "NN_Preds": [str(preds_NN)],
+            "NN_next5weeks": [str(future_NN)],
 
-            "NN2_MAE": [maeNN2],
-            "NN2_Preds": [str(forecasted_valuesNN2[:N])],
-            "NN2_next5weeks": [str(forecasted_valuesNN2[N:])],
+            "NN2_MAE": [mae_NN2],
+            "NN2_Preds": [str(preds_NN2)],
+            "NN2_next5weeks": [str(future_NN2)],
 
             "MultiLSTM_MAE": [mae_MultiLSTM],
-            "MultiLSTM_Preds": [str(forecast_values_MultiLSTM[:N])],
-            "MultiLSTM_next5weeks": [str(forecast_values_MultiLSTM[N:])],
+            "MultiLSTM_Preds": [str(preds_MultiLSTM)],
+            "MultiLSTM_next5weeks": [str(future_MultiLSTM)],
 
             "MultiBiLSTM_MAE": [mae_MultiBiLSTM],
-            "MultiBiLSTM_Preds": [str(forecast_values_MultiBiLSTM[:N])],
-            "MultiBiLSTM_next5weeks": [str(forecast_values_MultiBiLSTM[N:])],
+            "MultiBiLSTM_Preds": [str(preds_MultiBiLSTM)],
+            "MultiBiLSTM_next5weeks": [str(future_MultiBiLSTM)],
 
-            "Transformer_MAE": [mae_Transformer],
-            "Transformer_Preds": [str(forecast_values_Transformer[:N])],
-            "Transformer_next5weeks": [str(forecast_values_Transformer[N:])],
+            "Transformer_MAE": [mae_transformer],
+            "Transformer_Preds": [str(preds_transformer)],
+            "Transformer_next5weeks": [str(future_transformer)],
 
             "rollingMean_MAE": [mae_mean],
-            "rollingMean_Preds": [str(prediction_mean)],
-            "rollingMean_next5weeks": [str(next_5_weeks_mean)],
+            "rollingMean_Preds": [str(preds_mean)],
+            "rollingMean_next5weeks": [str(future_mean)],
 
-            "rollingLastNonZero_MAE": [mae_last_nonzero],
-            "rollingLastNonZero_Preds": [str(prediction_last_nonzero)],
-            "rollingLastNonZero_next5weeks": [str(next_5_weeks_last_nonzero)],
+            "rollingLastNonZero_MAE": [mae_lastNonZero],
+            "rollingLastNonZero_Preds": [str(preds_lastNonZero)],
+            "rollingLastNonZero_next5weeks": [str(future_lastNonZero)],
 
-            "NN_rollingMean_MAE": [mae_NN_mean],
-            "NN_rollingMean_Preds": [str(prediction_NN_mean)],
-            "NN_rollingMean_next5weeks": [str(last5weeks_NN_mean)],
-            "NN_rollingMean_MAE": [mae_NN_last_nonzero],
-            "NN_rollingMean_Preds": [str(prediction_NN_last_nonzero)],
-            "NN_rollingMean_next5weeks": [str(last5weeks_NN_last_nonzero)],
+            "NN_rollingMean_MAE": [mae_mean_NN],
+            "NN_rollingMean_Preds": [str(preds_mean_NN)],
+            "NN_rollingMean_next5weeks": [str(future_mean_NN)],
+            "NN_rollingLastNonZero_MAE": [mae_lastNonZero_NN],
+            "NN_rollingLastNonZero_Preds": [str(preds_lastNonZero_NN)],
+            "NN_rollingLastNonZero_next5weeks": [str(future_lastNonZero_NN)],
 
-            "NN2_rollingMean_MAE": [mae_NN2_mean],
-            "NN2_rollingMean_Preds": [str(prediction_NN2_mean)],
-            "NN2_rollingMean_next5weeks": [str(last5weeks_NN2_mean)],
-            "NN2_rollingMean_MAE": [mae_NN2_last_nonzero],
-            "NN2_rollingMean_Preds": [str(prediction_NN2_last_nonzero)],
-            "NN2_rollingMean_next5weeks": [str(last5weeks_NN2_last_nonzero)],
+            "NN2_rollingMean_MAE": [mae_mean_NN2],
+            "NN2_rollingMean_Preds": [str(preds_mean_NN2)],
+            "NN2_rollingMean_next5weeks": [str(future_mean_NN2)],
+            "NN2_rollingLastNonZero_MAE": [mae_lastNonZero_NN2],
+            "NN2_rollingLastNonZero_Preds": [str(preds_lastNonZero_NN2)],
+            "NN2_rollingLastNonZero_next5weeks": [str(future_lastNonZero_NN2)],
 
-            "MultiLSTM_rollingMean_MAE": [mae_MultiLSTM_mean],
-            "MultiLSTM_rollingMean_Preds": [str(prediction_MultiLSTM_mean)],
-            "MultiLSTM_rollingMean_next5weeks": [str(last5weeks_MultiLSTM_mean)],
-            "MultiLSTM_rollingMean_MAE": [mae_MultiLSTM_last_nonzero],
-            "MultiLSTM_rollingMean_Preds": [str(prediction_MultiLSTM_last_nonzero)],
-            "MultiLSTM_rollingMean_next5weeks": [str(last5weeks_MultiLSTM_last_nonzero)],
+            "MultiLSTM_rollingMean_MAE": [mae_mean_MultiLSTM],
+            "MultiLSTM_rollingMean_Preds": [str(preds_mean_MultiLSTM)],
+            "MultiLSTM_rollingMean_next5weeks": [str(future_mean_MultiLSTM)],
+            "MultiLSTM_rollingLastNonZero_MAE": [mae_lastNonZero_MultiLSTM],
+            "MultiLSTM_rollingLastNonZero_Preds": [str(preds_lastNonZero_MultiLSTM)],
+            "MultiLSTM_rollingLastNonZero_next5weeks": [str(future_lastNonZero_MultiLSTM)],
 
-            "MultiBiLSTM_rollingMean_MAE": [mae_MultiBiLSTM_mean],
-            "MultiBiLSTM_rollingMean_Preds": [str(prediction_MultiBiLSTM_mean)],
-            "MultiBiLSTM_rollingMean_next5weeks": [str(last5weeks_MultiBiLSTM_mean)],
-            "MultiBiLSTM_rollingMean_MAE": [mae_MultiBiLSTM_last_nonzero],
-            "MultiBiLSTM_rollingMean_Preds": [str(prediction_MultiBiLSTM_last_nonzero)],
-            "MultiBiLSTM_rollingMean_next5weeks": [str(last5weeks_MultiBiLSTM_last_nonzero)],
+            "MultiBiLSTM_rollingMean_MAE": [mae_mean_MultiBiLSTM],
+            "MultiBiLSTM_rollingMean_Preds": [str(preds_mean_MultiBiLSTM)],
+            "MultiBiLSTM_rollingMean_next5weeks": [str(future_mean_MultiBiLSTM)],
+            "MultiBiLSTM_rollingLastNonZero_MAE": [mae_lastNonZero_MultiBiLSTM],
+            "MultiBiLSTM_rollingLastNonZero_Preds": [str(preds_lastNonZero_MultiBiLSTM)],
+            "MultiBiLSTM_rollingLastNonZero_next5weeks": [str(future_lastNonZero_MultiBiLSTM)],
 
-            "Transformer_rollingMean_MAE": [mae_Transformer_mean],
-            "Transformer_rollingMean_Preds": [str(prediction_Transformer_mean)],
-            "Transformer_rollingMean_next5weeks": [str(last5weeks_Transformer_mean)],
-            "Transformer_rollingMean_MAE": [mae_Transformer_last_nonzero],
-            "Transformer_rollingMean_Preds": [str(prediction_Transformer_last_nonzero)],
-            "Transformer_rollingMean_next5weeks": [str(last5weeks_Transformer_last_nonzero)],
+            "Transformer_rollingMean_MAE": [mae_mean_transformer],
+            "Transformer_rollingMean_Preds": [str(preds_mean_transformer)],
+            "Transformer_rollingMean_next5weeks": [str(future_mean_transformer)],
+            "Transformer_rollingLastNonZero_MAE": [mae_lastNonZero_transformer],
+            "Transformer_rollingLastNonZero_Preds": [str(preds_lastNonZero_transformer)],
+            "Transformer_rollingLastNonZero_next5weeks": [str(future_lastNonZero_transformer)],
         })
 
         temp_df.to_csv(output_all, mode='a', header=False, index=False)
 
         ##############################################################################################################
-        ##############################################################################################################
+        ##############################################################################################################        
 
         best_df = pd.DataFrame({
             "localityNo": [given_locality],
             "data_points": [(given_locality_df['value'] != 0).sum()],
-            "actual_values": [str(y_test[:N])],
-            "best_model": [best_model_name],
-            "mae": [best_mae],
-            "preds": [str(best_next5weeks)],
+            "actual_values": [str(actual_values)],
+            "reported_week": [week],
+            "reported_year": [year],
+            "latest_lice_value": [latest_lice_value],
+            "pred_5th_value": [best_model_specs['preds'][-1]],
+            "neighbours": [str(top_k_localities)],
+            "missed_weeks": [int(np.sum(weeks_missed))],
+            "best_model": [best_model_specs['name']],
+            "mae": [best_model_specs['mae']],
+            "preds": [str(best_model_specs['preds'])],
+            "future_values": [str(best_model_specs['future_values'])],
             "todo_treatment": [todo_treatment],
             "week_for_treatment": [week_for_treatment],
             "treatment_threshold": [lice_threshold],
@@ -1264,14 +1356,23 @@ def get_N_forecasts(df, given_locality = 13677, N = 5, top_k = 10, lr = 1e-3, n_
 
     return given_locality
 
-    
+
 
 
 if __name__=="__main__":
 
     output_all_file_name = 'all_results.csv'
     output_best_file_name ='best_results.csv'
-    training_history = 'training_history.csv'
+    training_history_file = 'training_history.csv'
+    info_file_name = "locality_info.csv"
+    limits_file_name = "lice_limits.csv"
+
+    avgFL_file_name = "final_avgFL.csv"
+    temperature_file_name = "final_temperature.csv"
+    treatment_file_name = "final_treatment.csv"
+    liceType_file_name = "final_LiceType.csv"
+
+    data_file_name = 'preprocessed_data.csv'
 
     parser = argparse.ArgumentParser(description="Description of your script.")
     parser.add_argument("aws_access_key", type=str, help="aws_access_key")
@@ -1291,19 +1392,25 @@ if __name__=="__main__":
     aws_secret_key = args.aws_secret_key
 
     s3 = boto3.client('s3', aws_access_key_id=aws_access_key, aws_secret_access_key=aws_secret_key, region_name='eu-north-1')
-
     bucket_name = 'mylice'
-    file_key = 'preprocessed_data.csv'
-
-    # Specify a local file name where you want to save the downloaded CSV file.
-    local_file_name = 'preprocessed_data.csv'
 
     # Download the file from S3 to your local machine.
-    s3.download_file(bucket_name, file_key, local_file_name)
+    s3.download_file(bucket_name, info_file_name, info_file_name)
+    s3.download_file(bucket_name, limits_file_name, limits_file_name)
+    s3.download_file(bucket_name, avgFL_file_name, avgFL_file_name)
+    s3.download_file(bucket_name, temperature_file_name, temperature_file_name)
+    s3.download_file(bucket_name, treatment_file_name, treatment_file_name)
+    s3.download_file(bucket_name, liceType_file_name, liceType_file_name)
+
+    get_Latest_Data(client_id = "msohaibkhalid96@gmail.com:bwopenapi", client_secret = "dygsjquul4pm")
 
     # Read the CSV file into a DataFrame.
-    df = pd.read_csv(local_file_name) 
+    df = pd.read_csv(data_file_name)
 
+    s3.delete_object(Bucket=bucket_name, Key=output_all_file_name)
+    s3.delete_object(Bucket=bucket_name, Key=output_best_file_name)
+    s3.delete_object(Bucket=bucket_name, Key=training_history_file)
+    
     localities_list = df['localityNo'].unique().tolist()[:max_localities]
 
     for i in range(0, len(localities_list), batch_size):
@@ -1315,10 +1422,46 @@ if __name__=="__main__":
         s3.upload_file(training_history, bucket_name, training_history)
 
 
-    # futures = [get_N_forecasts.remote(df=df, given_locality = loc, output_all = output_all_file_name, output_best = output_best_file_name) for loc in localities_list]
-    # ray.get(futures)
+    best_df_cols = ['localityNo', 'data_points', 'actual_values', 'reported_week', 'reported_year', 'latest_lice_value', 'pred_5th_value', 'neighbours', 'missed_weeks', 'best_model', 'mae', 'preds', 'future_values', 'todo_treatment', 'week_for_treatment', 'treatment_threshold', 'expected_decay', 'preds_with_decay']
+    best_df = pd.read_csv(output_best_file_name, header=None)
+    best_df.columns = best_df_cols
+    best_df = best_df.drop_duplicates(subset=['localityNo'], keep="last").reset_index(drop=True)
 
-    # s3.upload_file(output_all_file_name, bucket_name, output_all_file_name)
-    # s3.upload_file(output_best_file_name, bucket_name, output_best_file_name)
-    # s3.upload_file(training_history, bucket_name, training_history)
+    limits = pd.read_csv("lice_limits.csv")
+    info = pd.read_csv("locality_info.csv")
 
+    lice_over_limit = []
+    pred_5th_over_limit = []
+
+    for locality in best_df.localityNo.tolist():
+        row_best_df = best_df[best_df['localityNo'] == locality].reset_index(drop=True)
+        latest_lice_value = row_best_df['latest_lice_value'].values[0]
+        pred_5th_value = row_best_df['pred_5th_value'].values[0]
+        reported_week = row_best_df['reported_week'].values[0]
+
+        row_info = info[info['localityNo'] == locality].reset_index(drop=True)
+        prod_area = row_info['productionAreaID'].values[0]
+
+        limit = limits.loc[limits['Week'] == reported_week, "PA"+str(prod_area)].values[0]
+
+        if latest_lice_value > limit:
+            lice_over_limit.append('yes')
+        else:
+            lice_over_limit.append('no')
+        
+        if pred_5th_value > limit:
+            pred_5th_over_limit.append('yes')
+        else:
+            pred_5th_over_limit.append('no')
+        
+    best_df['lice_over_limit'] = lice_over_limit
+    best_df['5th_pred_over_limit'] = pred_5th_over_limit
+    best_df['rank'] = best_df['mae'].rank(ascending=True).astype(int)
+    best_df.to_csv(output_best_file_name, index=False)
+    
+    s3.upload_file(output_best_file_name, bucket_name, output_best_file_name[:-4]+'_'+datetime.now().strftime('%Y-%m-%d')+'.csv')
+
+    s3.upload_file(avgFL_file_name, bucket_name, avgFL_file_name)
+    s3.upload_file(temperature_file_name, bucket_name, temperature_file_name)
+    s3.upload_file(treatment_file_name, bucket_name, treatment_file_name)
+    s3.upload_file(liceType_file_name, bucket_name, liceType_file_name)
