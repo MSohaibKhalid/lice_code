@@ -372,11 +372,11 @@ def generate_sequences(data, window_size):
 
 
 def get_Latest_Data(client_id = None, client_secret = None):
-    localities_list = get_Localities_List(client_id, client_secret)
-    write_All_Localities_avgFL_Data(client_id, client_secret, localities_list)
-    write_All_Localities_Treatment_Data(client_id, client_secret, localities_list)
-    write_All_Localities_Temperature_Data(client_id, client_secret, localities_list)
-    write_All_Localities_LiceType_Data(client_id, client_secret, localities_list)
+    # localities_list = get_Localities_List(client_id, client_secret)
+    # write_All_Localities_avgFL_Data(client_id, client_secret, localities_list)
+    # write_All_Localities_Treatment_Data(client_id, client_secret, localities_list)
+    # write_All_Localities_Temperature_Data(client_id, client_secret, localities_list)
+    # write_All_Localities_LiceType_Data(client_id, client_secret, localities_list)
 
     avgfemalelice_df = pd.read_csv('final_avgFL.csv')
     modified_avgFL = preprocess_data(avgfemalelice_df)
