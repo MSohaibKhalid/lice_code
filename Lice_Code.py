@@ -1406,11 +1406,12 @@ if __name__=="__main__":
 
     # Read the CSV file into a DataFrame.
     df = pd.read_csv(data_file_name)
-
-    s3.delete_object(Bucket=bucket_name, Key=output_all_file_name)
-    s3.delete_object(Bucket=bucket_name, Key=output_best_file_name)
-    s3.delete_object(Bucket=bucket_name, Key=training_history_file)
-    
+    try:
+        s3.delete_object(Bucket=bucket_name, Key=output_all_file_name)
+        s3.delete_object(Bucket=bucket_name, Key=output_best_file_name)
+        s3.delete_object(Bucket=bucket_name, Key=training_history_file)
+    except:
+        pass
     localities_list = df['localityNo'].unique().tolist()[:max_localities]
 
     for i in range(0, len(localities_list), batch_size):
