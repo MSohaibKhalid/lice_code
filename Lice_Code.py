@@ -57,7 +57,7 @@ def get_headers_for_request(client_id, client_secret):
 
 
 
-def write_All_Localities_Treatment_Data(client_id = None, client_secret = None, locality_list = None):
+def write_All_Localities_Treatment_Data(output_csv_path, client_id = None, client_secret = None, locality_list = None):
 
     assert (client_id != None or client_secret != None or locality_list != None), "Please enter Client ID and Client Secret."
 
@@ -65,7 +65,6 @@ def write_All_Localities_Treatment_Data(client_id = None, client_secret = None, 
 
     df = pd.DataFrame()
     current_year = pd.Timestamp.now().year
-    output_csv_path = 'final_treatment.csv'
 
     for loop_num, loc_num in enumerate(locality_list):
         if (loop_num % 200) == 0:
@@ -126,7 +125,7 @@ def write_All_Localities_Treatment_Data(client_id = None, client_secret = None, 
 
 
 
-def write_All_Localities_Temperature_Data(client_id = None, client_secret = None, locality_list = None):
+def write_All_Localities_Temperature_Data(output_csv_path, client_id = None, client_secret = None, locality_list = None):
 
     assert (client_id != None or client_secret != None or locality_list != None), "Please enter Client ID and Client Secret."
 
@@ -134,7 +133,6 @@ def write_All_Localities_Temperature_Data(client_id = None, client_secret = None
 
     df = pd.DataFrame()
     current_year = pd.Timestamp.now().year
-    output_csv_path = 'final_temperature.csv'
 
     for loop_num, loc_num in enumerate(locality_list):
         if (loop_num % 200) == 0:
@@ -167,7 +165,7 @@ def write_All_Localities_Temperature_Data(client_id = None, client_secret = None
 
 
 
-def write_All_Localities_avgFL_Data(client_id = None, client_secret = None, locality_list = None):
+def write_All_Localities_avgFL_Data(output_csv_path, client_id = None, client_secret = None, locality_list = None):
 
     assert (client_id != None or client_secret != None or locality_list != None), "Please enter Client ID and Client Secret."
 
@@ -175,7 +173,6 @@ def write_All_Localities_avgFL_Data(client_id = None, client_secret = None, loca
 
     df = pd.DataFrame()
     current_year = pd.Timestamp.now().year
-    output_csv_path = 'final_avgFL_new.csv'
 
     for loop_num, loc_num in enumerate(locality_list):
         if (loop_num % 200) == 0:
@@ -209,7 +206,7 @@ def write_All_Localities_avgFL_Data(client_id = None, client_secret = None, loca
 
 
 
-def write_All_Localities_LiceType_Data(client_id = None, client_secret = None, locality_list = None):
+def write_All_Localities_LiceType_Data(output_csv_path, client_id = None, client_secret = None, locality_list = None):
 
     assert (client_id != None or client_secret != None or locality_list != None), "Please enter Client ID and Client Secret."
 
@@ -217,7 +214,6 @@ def write_All_Localities_LiceType_Data(client_id = None, client_secret = None, l
 
     df = pd.DataFrame()
     current_year = pd.Timestamp.now().year
-    output_csv_path = 'final_LiceType.csv'
 
     for loop_num, loc_num in enumerate(locality_list):
         if (loop_num % 200) == 0:
@@ -298,9 +294,6 @@ def preprocess_data(avgfemalelice_df):
 
 
 def get_Localities_List(client_id = None, client_secret = None):
-
-    assert (client_id != None or client_secret != None), "Please enter Client ID and Client Secret."
-
     headers = get_headers_for_request(client_id, client_secret)
 
     url = "https://www.barentswatch.no/bwapi/v1/geodata/fishhealth/localities"
@@ -371,22 +364,27 @@ def generate_sequences(data, window_size):
 
 
 
-def get_Latest_Data(client_id = None, client_secret = None):
-    # localities_list = get_Localities_List(client_id, client_secret)
-    # write_All_Localities_avgFL_Data(client_id, client_secret, localities_list)
-    # write_All_Localities_Treatment_Data(client_id, client_secret, localities_list)
-    # write_All_Localities_Temperature_Data(client_id, client_secret, localities_list)
-    # write_All_Localities_LiceType_Data(client_id, client_secret, localities_list)
+def get_Latest_Data(avgFL_file, temperature_file, treatment_file, liceType_file, 
+                    client_id = None, client_secret = None, fetch_new_data = False):
+    
+    assert (client_id != None or client_secret != None), "Please enter Client ID and Client Secret."
 
-    avgfemalelice_df = pd.read_csv('final_avgFL.csv')
+    if fetch_new_data:
+        localities_list = get_Localities_List(client_id, client_secret)
+        write_All_Localities_avgFL_Data(avgFL_file, client_id, client_secret, localities_list)
+        write_All_Localities_Temperature_Data(temperature_file, client_id, client_secret, localities_list)
+        write_All_Localities_Treatment_Data(treatment_file, client_id, client_secret, localities_list)
+        write_All_Localities_LiceType_Data(liceType_file, client_id, client_secret, localities_list)
+
+    avgfemalelice_df = pd.read_csv(avgFL_file)
     modified_avgFL = preprocess_data(avgfemalelice_df)
 
-    temp_df = pd.read_csv("final_temperature.csv")
+    temp_df = pd.read_csv(temperature_file)
 
     merged_df = pd.merge(modified_avgFL, temp_df, on=['localityNo', 'year', 'week'], how='left')
     merged_df['temperature'] = merged_df['temperature'].fillna(0)
 
-    treat_df = pd.read_csv("final_treatment.csv")
+    treat_df = pd.read_csv(treatment_file)
     treat_df["mechanicalTreatment"] = treat_df["mechanicalTreatment"].astype(int)
     treat_df["mechanicalEntirity"] = treat_df["mechanicalEntirity"].astype(int)
     treat_df["chemicalTreatment"] = treat_df["chemicalTreatment"].astype(int)
@@ -394,7 +392,7 @@ def get_Latest_Data(client_id = None, client_secret = None):
 
     merged_df = pd.merge(merged_df, treat_df, on=['localityNo', 'year', 'week'], how='left')
 
-    liceType_df = pd.read_csv("final_LiceType.csv")
+    liceType_df = pd.read_csv(liceType_file)
 
     merged_df = pd.merge(merged_df, liceType_df, on=['localityNo', 'year', 'week'], how='left')
     merged_df = merged_df.fillna(0)
@@ -1402,16 +1400,28 @@ if __name__=="__main__":
     s3.download_file(bucket_name, treatment_file_name, treatment_file_name)
     s3.download_file(bucket_name, liceType_file_name, liceType_file_name)
 
-    get_Latest_Data(client_id = "msohaibkhalid96@gmail.com:bwopenapi", client_secret = "dygsjquul4pm")
+    get_Latest_Data(avgFL_file_name, temperature_file_name, treatment_file_name, liceType_file_name,
+                    client_id = "msohaibkhalid96@gmail.com:bwopenapi", client_secret = "dygsjquul4pm", fetch_new_data = False)
 
     # Read the CSV file into a DataFrame.
     df = pd.read_csv(data_file_name)
+
     try:
         s3.delete_object(Bucket=bucket_name, Key=output_all_file_name)
+    except:
+        print(" * Unable to delete All results file from S3 * ")
+
+    try:
         s3.delete_object(Bucket=bucket_name, Key=output_best_file_name)
+    except:
+        print(" * Unable to delete Best results file from S3 * ")
+
+    try:
         s3.delete_object(Bucket=bucket_name, Key=training_history_file)
     except:
-        pass
+        print(" * Unable to delete Training History file from S3 * ")
+
+
     localities_list = df['localityNo'].unique().tolist()[:max_localities]
 
     for i in range(0, len(localities_list), batch_size):
@@ -1420,7 +1430,7 @@ if __name__=="__main__":
         ray.get(futures)
         s3.upload_file(output_all_file_name, bucket_name, output_all_file_name)
         s3.upload_file(output_best_file_name, bucket_name, output_best_file_name)
-        s3.upload_file(training_history, bucket_name, training_history)
+        s3.upload_file(training_history_file, bucket_name, training_history_file)
 
 
     best_df_cols = ['localityNo', 'data_points', 'actual_values', 'reported_week', 'reported_year', 'latest_lice_value', 'pred_5th_value', 'neighbours', 'missed_weeks', 'best_model', 'mae', 'preds', 'future_values', 'todo_treatment', 'week_for_treatment', 'treatment_threshold', 'expected_decay', 'preds_with_decay']
