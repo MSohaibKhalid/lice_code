@@ -1281,7 +1281,10 @@ def get_N_forecasts(df, given_locality = 13677, N = 5, top_k = 10, lr = 1e-3, n_
             "TopK_Transformer_rollingLastNonZero_next5weeks": [str(future_lastNonZero_transformer)],
         })
 
-        temp_df.to_csv(output_all, mode='a', header=False, index=False)
+        if os.path.isfile(output_all):
+            temp_df.to_csv(output_all, mode='a', header=False, index=False)
+        else:
+            temp_df.to_csv(output_all, index=False)
 
         ##############################################################################################################
         ##############################################################################################################        
@@ -1307,7 +1310,10 @@ def get_N_forecasts(df, given_locality = 13677, N = 5, top_k = 10, lr = 1e-3, n_
             "preds_with_decay": [str(preds_with_decay)],
         })
 
-        best_df.to_csv(output_best, mode='a', header=False, index=False)
+        if os.path.isfile(output_best):
+            best_df.to_csv(output_best, mode='a', header=False, index=False)
+        else:
+            best_df.to_csv(output_best, index=False)
 
         ##############################################################################################################
         ##############################################################################################################
@@ -1328,8 +1334,11 @@ def get_N_forecasts(df, given_locality = 13677, N = 5, top_k = 10, lr = 1e-3, n_
             'end_time': [str(end_time)],
             'duration': [str(minutes)+' mins and '+str(seconds)+' secs'],
         })
-        train_hist_df.to_csv(training_history, mode='a', header=False, index=False)
 
+        if os.path.isfile(training_history):
+            train_hist_df.to_csv(training_history, mode='a', header=False, index=False)
+        else:
+            train_hist_df.to_csv(training_history, index=False)
 
     
     except Exception as e:
@@ -1352,7 +1361,11 @@ def get_N_forecasts(df, given_locality = 13677, N = 5, top_k = 10, lr = 1e-3, n_
             'end_time': [str(end_time)],
             'duration': [str(minutes)+' mins and '+str(seconds)+' secs'],
         })
-        train_hist_df.to_csv(training_history, mode='a', header=False, index=False)
+        
+        if os.path.isfile(training_history):
+            train_hist_df.to_csv(training_history, mode='a', header=False, index=False)
+        else:
+            train_hist_df.to_csv(training_history, index=False)
 
         print("\n--> Error processing data for Locality Number: {}\n".format(given_locality))
 
@@ -1442,9 +1455,7 @@ if __name__=="__main__":
         s3.upload_file(training_history_file, bucket_name, training_history_file)
 
 
-    best_df_cols = ['localityNo', 'data_points', 'actual_values', 'reported_week', 'reported_year', 'latest_lice_value', 'pred_5th_value', 'neighbours', 'missed_weeks', 'best_model', 'mae', 'preds', 'future_values', 'todo_treatment', 'week_for_treatment', 'treatment_threshold', 'expected_decay', 'preds_with_decay']
     best_df = pd.read_csv(output_best_file_name, header=None)
-    best_df.columns = best_df_cols
     best_df = best_df.drop_duplicates(subset=['localityNo'], keep="last").reset_index(drop=True)
 
     limits = pd.read_csv("lice_limits.csv")
