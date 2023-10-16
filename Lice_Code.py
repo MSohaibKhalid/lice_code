@@ -746,7 +746,7 @@ def get_results_NN2(X_train_scaled, y_train, X_test_scaled, actual_values, best_
 
 def get_results_MultiLSTM(X_train, y_train, scaled_data_chunk, X_test_scaled, actual_values, scaler_seq, window_size, batch_size, best_model_specs, n_epoch, lr, N):
     
-    model_name = "MultiLSTM"
+    model_name = "TopK_MultiLSTM"
 
     feature_length = scaled_data_chunk.shape[1]
 
@@ -796,7 +796,7 @@ def get_results_MultiLSTM(X_train, y_train, scaled_data_chunk, X_test_scaled, ac
 
 def get_results_MultiBiLSTM(X_train, y_train, scaled_data_chunk, X_test_scaled, actual_values, scaler_seq, window_size, batch_size, best_model_specs, n_epoch, lr, N):
     
-    model_name = "MultiBiLSTM"
+    model_name = "TopK_MultiBiLSTM"
 
     feature_length = scaled_data_chunk.shape[1]
 
@@ -846,7 +846,7 @@ def get_results_MultiBiLSTM(X_train, y_train, scaled_data_chunk, X_test_scaled, 
 
 def get_results_transformer(X_train, y_train, scaled_data_chunk, X_test_scaled, actual_values, scaler_seq, window_size, batch_size, best_model_specs, n_epoch, lr, N):
     
-    model_name = "transformer"
+    model_name = "TopK_transformer"
 
     feature_length = scaled_data_chunk.shape[1]
 
@@ -1037,31 +1037,31 @@ def get_N_forecasts(df, given_locality = 13677, N = 5, top_k = 10, lr = 1e-3, n_
         # Create a DataFrame to store the all data for given locality
         data = prepare_dataset(df, given_locality, top_k_localities, year, week)
 
-        ################################ Preparing TRAINING DATA ################################
-        # Create a DataFrame to store the training data
-        training_data = data.iloc[5:-5].copy()
+        # ################################ Preparing TRAINING DATA ################################
+        # # Create a DataFrame to store the training data
+        # training_data = data.iloc[5:-5].copy()
 
-        y_train = training_data['value']
-        training_data = training_data.drop('value', axis=1)
-        # Standardize the training features
-        scaler_M2 = StandardScaler()
-        X_train_scaled_M2 = scaler_M2.fit_transform(training_data)
+        # y_train = training_data['value']
+        # training_data = training_data.drop('value', axis=1)
+        # # Standardize the training features
+        # scaler_M2 = StandardScaler()
+        # X_train_scaled_M2 = scaler_M2.fit_transform(training_data)
 
-        ################################ Preparing TESTING DATA ################################
-        # Create a DataFrame to store the training data
-        testing_data = data.tail(2*N).copy()
+        # ################################ Preparing TESTING DATA ################################
+        # # Create a DataFrame to store the training data
+        # testing_data = data.tail(2*N).copy()
 
-        actual_values = testing_data['value'].values[:N]
-        actual_values = actual_values.reshape(-1)
-        testing_data = testing_data.drop('value', axis=1)
+        # actual_values = testing_data['value'].values[:N]
+        # actual_values = actual_values.reshape(-1)
+        # testing_data = testing_data.drop('value', axis=1)
 
-        # Standardize the testing features
-        X_test_scaled_M2 = scaler_M2.transform(testing_data)
+        # # Standardize the testing features
+        # X_test_scaled_M2 = scaler_M2.transform(testing_data)
 
-        ################################ Getting Results for M2 MODELs ################################
-        mae_LR, preds_LR, future_LR, best_model_specs = get_results_LR(X_train_scaled_M2, y_train, X_test_scaled_M2, actual_values, best_model_specs, N)
-        mae_NN, preds_NN, future_NN, best_model_specs = get_results_NN(X_train_scaled_M2, y_train, X_test_scaled_M2, actual_values, best_model_specs, n_epoch, lr, N)
-        mae_NN2, preds_NN2, future_NN2, best_model_specs = get_results_NN2(X_train_scaled_M2, y_train, X_test_scaled_M2, actual_values, best_model_specs, n_epoch, lr, N)
+        # ################################ Getting Results for M2 MODELs ################################
+        # mae_LR, preds_LR, future_LR, best_model_specs = get_results_LR(X_train_scaled_M2, y_train, X_test_scaled_M2, actual_values, best_model_specs, N)
+        # mae_NN, preds_NN, future_NN, best_model_specs = get_results_NN(X_train_scaled_M2, y_train, X_test_scaled_M2, actual_values, best_model_specs, n_epoch, lr, N)
+        # mae_NN2, preds_NN2, future_NN2, best_model_specs = get_results_NN2(X_train_scaled_M2, y_train, X_test_scaled_M2, actual_values, best_model_specs, n_epoch, lr, N)
 
 
         ##############################################################################################################
@@ -1069,7 +1069,9 @@ def get_N_forecasts(df, given_locality = 13677, N = 5, top_k = 10, lr = 1e-3, n_
 
         ################################ Preparing Sequential TRAINING DATA ################################
         # Create a DataFrame to store the training data
-        data_sequential = data[['value', 'temperature', 'mechanicalTreatment', 'mechanicalEntirity', 'chemicalTreatment', 'chemicalEntirity', 'avgMobileLice', 'avgStationaryLice']]
+        data_cols = data.columns.tolist()
+        data_cols = data_cols.remove('value')
+        data_sequential = data[ ['value'] + data_cols ]
         training_data = data_sequential.iloc[5:-5].copy()
 
         multivariate_train_data = training_data.values
@@ -1084,6 +1086,8 @@ def get_N_forecasts(df, given_locality = 13677, N = 5, top_k = 10, lr = 1e-3, n_
         ################################ Preparing Sequential TESTING DATA ################################
         # Create a DataFrame to store the testing data
         testing_data = data_sequential.tail(2*N).copy()
+        actual_values = testing_data['value'].values[:N]
+        actual_values = actual_values.reshape(-1)
 
         multivariate_test_data = testing_data.values
         X_test_scaled_M4 = scaler_seq.transform(multivariate_test_data)
@@ -1112,20 +1116,20 @@ def get_N_forecasts(df, given_locality = 13677, N = 5, top_k = 10, lr = 1e-3, n_
         ##############################################################################################################
         ##############################################################################################################
         
-        mae_mean_NN, preds_mean_NN, future_mean_NN, best_model_specs = get_results_comb("mean_NN", mae_mean, preds_mean, future_mean, mae_NN, preds_NN, future_NN, actual_values, best_model_specs)
-        mae_lastNonZero_NN, preds_lastNonZero_NN, future_lastNonZero_NN, best_model_specs = get_results_comb("lastNonZero_NN", mae_lastNonZero, preds_lastNonZero, future_lastNonZero, mae_NN, preds_NN, future_NN, actual_values, best_model_specs)
+        # mae_mean_NN, preds_mean_NN, future_mean_NN, best_model_specs = get_results_comb("mean_NN", mae_mean, preds_mean, future_mean, mae_NN, preds_NN, future_NN, actual_values, best_model_specs)
+        # mae_lastNonZero_NN, preds_lastNonZero_NN, future_lastNonZero_NN, best_model_specs = get_results_comb("lastNonZero_NN", mae_lastNonZero, preds_lastNonZero, future_lastNonZero, mae_NN, preds_NN, future_NN, actual_values, best_model_specs)
 
-        mae_mean_NN2, preds_mean_NN2, future_mean_NN2, best_model_specs = get_results_comb("mean_NN2", mae_mean, preds_mean, future_mean, mae_NN2, preds_NN2, future_NN2, actual_values, best_model_specs)
-        mae_lastNonZero_NN2, preds_lastNonZero_NN2, future_lastNonZero_NN2, best_model_specs = get_results_comb("lastNonZero_NN2", mae_lastNonZero, preds_lastNonZero, future_lastNonZero, mae_NN2, preds_NN2, future_NN2, actual_values, best_model_specs)
+        # mae_mean_NN2, preds_mean_NN2, future_mean_NN2, best_model_specs = get_results_comb("mean_NN2", mae_mean, preds_mean, future_mean, mae_NN2, preds_NN2, future_NN2, actual_values, best_model_specs)
+        # mae_lastNonZero_NN2, preds_lastNonZero_NN2, future_lastNonZero_NN2, best_model_specs = get_results_comb("lastNonZero_NN2", mae_lastNonZero, preds_lastNonZero, future_lastNonZero, mae_NN2, preds_NN2, future_NN2, actual_values, best_model_specs)
 
-        mae_mean_MultiLSTM, preds_mean_MultiLSTM, future_mean_MultiLSTM, best_model_specs = get_results_comb("mean_MultiLSTM", mae_mean, preds_mean, future_mean, mae_MultiLSTM, preds_MultiLSTM, future_MultiLSTM, actual_values, best_model_specs)
-        mae_lastNonZero_MultiLSTM, preds_lastNonZero_MultiLSTM, future_lastNonZero_MultiLSTM, best_model_specs = get_results_comb("lastNonZero_MultiLSTM", mae_lastNonZero, preds_lastNonZero, future_lastNonZero, mae_MultiLSTM, preds_MultiLSTM, future_MultiLSTM, actual_values, best_model_specs)
+        mae_mean_MultiLSTM, preds_mean_MultiLSTM, future_mean_MultiLSTM, best_model_specs = get_results_comb("TopK_mean_MultiLSTM", mae_mean, preds_mean, future_mean, mae_MultiLSTM, preds_MultiLSTM, future_MultiLSTM, actual_values, best_model_specs)
+        mae_lastNonZero_MultiLSTM, preds_lastNonZero_MultiLSTM, future_lastNonZero_MultiLSTM, best_model_specs = get_results_comb("TopK_lastNonZero_MultiLSTM", mae_lastNonZero, preds_lastNonZero, future_lastNonZero, mae_MultiLSTM, preds_MultiLSTM, future_MultiLSTM, actual_values, best_model_specs)
 
-        mae_mean_MultiBiLSTM, preds_mean_MultiBiLSTM, future_mean_MultiBiLSTM, best_model_specs = get_results_comb("mean_MultiBiLSTM", mae_mean, preds_mean, future_mean, mae_MultiBiLSTM, preds_MultiBiLSTM, future_MultiBiLSTM, actual_values, best_model_specs)
-        mae_lastNonZero_MultiBiLSTM, preds_lastNonZero_MultiBiLSTM, future_lastNonZero_MultiBiLSTM, best_model_specs = get_results_comb("lastNonZero_MultiBiLSTM", mae_lastNonZero, preds_lastNonZero, future_lastNonZero, mae_MultiBiLSTM, preds_MultiBiLSTM, future_MultiBiLSTM, actual_values, best_model_specs)
+        mae_mean_MultiBiLSTM, preds_mean_MultiBiLSTM, future_mean_MultiBiLSTM, best_model_specs = get_results_comb("TopK_mean_MultiBiLSTM", mae_mean, preds_mean, future_mean, mae_MultiBiLSTM, preds_MultiBiLSTM, future_MultiBiLSTM, actual_values, best_model_specs)
+        mae_lastNonZero_MultiBiLSTM, preds_lastNonZero_MultiBiLSTM, future_lastNonZero_MultiBiLSTM, best_model_specs = get_results_comb("TopK_lastNonZero_MultiBiLSTM", mae_lastNonZero, preds_lastNonZero, future_lastNonZero, mae_MultiBiLSTM, preds_MultiBiLSTM, future_MultiBiLSTM, actual_values, best_model_specs)
 
-        mae_mean_transformer, preds_mean_transformer, future_mean_transformer, best_model_specs = get_results_comb("mean_transformer", mae_mean, preds_mean, future_mean, mae_transformer, preds_transformer, future_transformer, actual_values, best_model_specs)
-        mae_lastNonZero_transformer, preds_lastNonZero_transformer, future_lastNonZero_transformer, best_model_specs = get_results_comb("lastNonZero_transformer", mae_lastNonZero, preds_lastNonZero, future_lastNonZero, mae_transformer, preds_transformer, future_transformer, actual_values, best_model_specs)
+        mae_mean_transformer, preds_mean_transformer, future_mean_transformer, best_model_specs = get_results_comb("TopK_mean_transformer", mae_mean, preds_mean, future_mean, mae_transformer, preds_transformer, future_transformer, actual_values, best_model_specs)
+        mae_lastNonZero_transformer, preds_lastNonZero_transformer, future_lastNonZero_transformer, best_model_specs = get_results_comb("TopK_lastNonZero_transformer", mae_lastNonZero, preds_lastNonZero, future_lastNonZero, mae_transformer, preds_transformer, future_transformer, actual_values, best_model_specs)
 
         print("\n--> Training Combined Models Complete.\n")
 
@@ -1209,29 +1213,29 @@ def get_N_forecasts(df, given_locality = 13677, N = 5, top_k = 10, lr = 1e-3, n_
             "actual_values": [str(actual_values)],
             "data_points": [(given_locality_df['value'] != 0).sum()],
 
-            "LR_MAE": [mae_LR],
-            "LR_Preds": [str(preds_LR)],
-            "LR_next5weeks": [str(future_LR)],
+            # "LR_MAE": [mae_LR],
+            # "LR_Preds": [str(preds_LR)],
+            # "LR_next5weeks": [str(future_LR)],
 
-            "NN_MAE": [mae_NN],
-            "NN_Preds": [str(preds_NN)],
-            "NN_next5weeks": [str(future_NN)],
+            # "NN_MAE": [mae_NN],
+            # "NN_Preds": [str(preds_NN)],
+            # "NN_next5weeks": [str(future_NN)],
 
-            "NN2_MAE": [mae_NN2],
-            "NN2_Preds": [str(preds_NN2)],
-            "NN2_next5weeks": [str(future_NN2)],
+            # "NN2_MAE": [mae_NN2],
+            # "NN2_Preds": [str(preds_NN2)],
+            # "NN2_next5weeks": [str(future_NN2)],
 
-            "MultiLSTM_MAE": [mae_MultiLSTM],
-            "MultiLSTM_Preds": [str(preds_MultiLSTM)],
-            "MultiLSTM_next5weeks": [str(future_MultiLSTM)],
+            "TopK_MultiLSTM_MAE": [mae_MultiLSTM],
+            "TopK_MultiLSTM_Preds": [str(preds_MultiLSTM)],
+            "TopK_MultiLSTM_next5weeks": [str(future_MultiLSTM)],
 
-            "MultiBiLSTM_MAE": [mae_MultiBiLSTM],
-            "MultiBiLSTM_Preds": [str(preds_MultiBiLSTM)],
-            "MultiBiLSTM_next5weeks": [str(future_MultiBiLSTM)],
+            "TopK_MultiBiLSTM_MAE": [mae_MultiBiLSTM],
+            "TopK_MultiBiLSTM_Preds": [str(preds_MultiBiLSTM)],
+            "TopK_MultiBiLSTM_next5weeks": [str(future_MultiBiLSTM)],
 
-            "Transformer_MAE": [mae_transformer],
-            "Transformer_Preds": [str(preds_transformer)],
-            "Transformer_next5weeks": [str(future_transformer)],
+            "TopK_Transformer_MAE": [mae_transformer],
+            "TopK_Transformer_Preds": [str(preds_transformer)],
+            "TopK_Transformer_next5weeks": [str(future_transformer)],
 
             "rollingMean_MAE": [mae_mean],
             "rollingMean_Preds": [str(preds_mean)],
@@ -1241,40 +1245,40 @@ def get_N_forecasts(df, given_locality = 13677, N = 5, top_k = 10, lr = 1e-3, n_
             "rollingLastNonZero_Preds": [str(preds_lastNonZero)],
             "rollingLastNonZero_next5weeks": [str(future_lastNonZero)],
 
-            "NN_rollingMean_MAE": [mae_mean_NN],
-            "NN_rollingMean_Preds": [str(preds_mean_NN)],
-            "NN_rollingMean_next5weeks": [str(future_mean_NN)],
-            "NN_rollingLastNonZero_MAE": [mae_lastNonZero_NN],
-            "NN_rollingLastNonZero_Preds": [str(preds_lastNonZero_NN)],
-            "NN_rollingLastNonZero_next5weeks": [str(future_lastNonZero_NN)],
+            # "NN_rollingMean_MAE": [mae_mean_NN],
+            # "NN_rollingMean_Preds": [str(preds_mean_NN)],
+            # "NN_rollingMean_next5weeks": [str(future_mean_NN)],
+            # "NN_rollingLastNonZero_MAE": [mae_lastNonZero_NN],
+            # "NN_rollingLastNonZero_Preds": [str(preds_lastNonZero_NN)],
+            # "NN_rollingLastNonZero_next5weeks": [str(future_lastNonZero_NN)],
 
-            "NN2_rollingMean_MAE": [mae_mean_NN2],
-            "NN2_rollingMean_Preds": [str(preds_mean_NN2)],
-            "NN2_rollingMean_next5weeks": [str(future_mean_NN2)],
-            "NN2_rollingLastNonZero_MAE": [mae_lastNonZero_NN2],
-            "NN2_rollingLastNonZero_Preds": [str(preds_lastNonZero_NN2)],
-            "NN2_rollingLastNonZero_next5weeks": [str(future_lastNonZero_NN2)],
+            # "NN2_rollingMean_MAE": [mae_mean_NN2],
+            # "NN2_rollingMean_Preds": [str(preds_mean_NN2)],
+            # "NN2_rollingMean_next5weeks": [str(future_mean_NN2)],
+            # "NN2_rollingLastNonZero_MAE": [mae_lastNonZero_NN2],
+            # "NN2_rollingLastNonZero_Preds": [str(preds_lastNonZero_NN2)],
+            # "NN2_rollingLastNonZero_next5weeks": [str(future_lastNonZero_NN2)],
 
-            "MultiLSTM_rollingMean_MAE": [mae_mean_MultiLSTM],
-            "MultiLSTM_rollingMean_Preds": [str(preds_mean_MultiLSTM)],
-            "MultiLSTM_rollingMean_next5weeks": [str(future_mean_MultiLSTM)],
-            "MultiLSTM_rollingLastNonZero_MAE": [mae_lastNonZero_MultiLSTM],
-            "MultiLSTM_rollingLastNonZero_Preds": [str(preds_lastNonZero_MultiLSTM)],
-            "MultiLSTM_rollingLastNonZero_next5weeks": [str(future_lastNonZero_MultiLSTM)],
+            "TopK_MultiLSTM_rollingMean_MAE": [mae_mean_MultiLSTM],
+            "TopK_MultiLSTM_rollingMean_Preds": [str(preds_mean_MultiLSTM)],
+            "TopK_MultiLSTM_rollingMean_next5weeks": [str(future_mean_MultiLSTM)],
+            "TopK_MultiLSTM_rollingLastNonZero_MAE": [mae_lastNonZero_MultiLSTM],
+            "TopK_MultiLSTM_rollingLastNonZero_Preds": [str(preds_lastNonZero_MultiLSTM)],
+            "TopK_MultiLSTM_rollingLastNonZero_next5weeks": [str(future_lastNonZero_MultiLSTM)],
 
-            "MultiBiLSTM_rollingMean_MAE": [mae_mean_MultiBiLSTM],
-            "MultiBiLSTM_rollingMean_Preds": [str(preds_mean_MultiBiLSTM)],
-            "MultiBiLSTM_rollingMean_next5weeks": [str(future_mean_MultiBiLSTM)],
-            "MultiBiLSTM_rollingLastNonZero_MAE": [mae_lastNonZero_MultiBiLSTM],
-            "MultiBiLSTM_rollingLastNonZero_Preds": [str(preds_lastNonZero_MultiBiLSTM)],
-            "MultiBiLSTM_rollingLastNonZero_next5weeks": [str(future_lastNonZero_MultiBiLSTM)],
+            "TopK_MultiBiLSTM_rollingMean_MAE": [mae_mean_MultiBiLSTM],
+            "TopK_MultiBiLSTM_rollingMean_Preds": [str(preds_mean_MultiBiLSTM)],
+            "TopK_MultiBiLSTM_rollingMean_next5weeks": [str(future_mean_MultiBiLSTM)],
+            "TopK_MultiBiLSTM_rollingLastNonZero_MAE": [mae_lastNonZero_MultiBiLSTM],
+            "TopK_MultiBiLSTM_rollingLastNonZero_Preds": [str(preds_lastNonZero_MultiBiLSTM)],
+            "TopK_MultiBiLSTM_rollingLastNonZero_next5weeks": [str(future_lastNonZero_MultiBiLSTM)],
 
-            "Transformer_rollingMean_MAE": [mae_mean_transformer],
-            "Transformer_rollingMean_Preds": [str(preds_mean_transformer)],
-            "Transformer_rollingMean_next5weeks": [str(future_mean_transformer)],
-            "Transformer_rollingLastNonZero_MAE": [mae_lastNonZero_transformer],
-            "Transformer_rollingLastNonZero_Preds": [str(preds_lastNonZero_transformer)],
-            "Transformer_rollingLastNonZero_next5weeks": [str(future_lastNonZero_transformer)],
+            "TopK_Transformer_rollingMean_MAE": [mae_mean_transformer],
+            "TopK_Transformer_rollingMean_Preds": [str(preds_mean_transformer)],
+            "TopK_Transformer_rollingMean_next5weeks": [str(future_mean_transformer)],
+            "TopK_Transformer_rollingLastNonZero_MAE": [mae_lastNonZero_transformer],
+            "TopK_Transformer_rollingLastNonZero_Preds": [str(preds_lastNonZero_transformer)],
+            "TopK_Transformer_rollingLastNonZero_next5weeks": [str(future_lastNonZero_transformer)],
         })
 
         temp_df.to_csv(output_all, mode='a', header=False, index=False)
@@ -1359,9 +1363,9 @@ def get_N_forecasts(df, given_locality = 13677, N = 5, top_k = 10, lr = 1e-3, n_
 
 if __name__=="__main__":
 
-    output_all_file_name = 'all_results.csv'
-    output_best_file_name ='best_results.csv'
-    training_history_file = 'training_history.csv'
+    output_all_file_name = 'all_results2.csv'
+    output_best_file_name ='best_results2.csv'
+    training_history_file = 'training_history2.csv'
     info_file_name = "locality_info.csv"
     limits_file_name = "lice_limits.csv"
 
@@ -1402,6 +1406,11 @@ if __name__=="__main__":
 
     get_Latest_Data(avgFL_file_name, temperature_file_name, treatment_file_name, liceType_file_name,
                     client_id = "msohaibkhalid96@gmail.com:bwopenapi", client_secret = "dygsjquul4pm", fetch_new_data = False)
+    
+    s3.upload_file(avgFL_file_name, bucket_name, avgFL_file_name)
+    s3.upload_file(temperature_file_name, bucket_name, temperature_file_name)
+    s3.upload_file(treatment_file_name, bucket_name, treatment_file_name)
+    s3.upload_file(liceType_file_name, bucket_name, liceType_file_name)
 
     # Read the CSV file into a DataFrame.
     df = pd.read_csv(data_file_name)
@@ -1471,8 +1480,3 @@ if __name__=="__main__":
     best_df.to_csv(output_best_file_name, index=False)
     
     s3.upload_file(output_best_file_name, bucket_name, output_best_file_name[:-4]+'_'+datetime.now().strftime('%Y-%m-%d')+'.csv')
-
-    s3.upload_file(avgFL_file_name, bucket_name, avgFL_file_name)
-    s3.upload_file(temperature_file_name, bucket_name, temperature_file_name)
-    s3.upload_file(treatment_file_name, bucket_name, treatment_file_name)
-    s3.upload_file(liceType_file_name, bucket_name, liceType_file_name)
