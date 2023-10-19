@@ -1043,7 +1043,7 @@ def get_N_forecasts(df, given_locality = 13677, N = 5, top_k = 10, lr = 1e-3, n_
         ################################ Preparing Sequential TRAINING DATA ################################
         # Create a DataFrame to store the training data
         data_cols = data.columns.tolist()
-        data_cols = data_cols.remove('value')
+        data_cols.remove('value')
         data_sequential = data[ ['value'] + data_cols ]
         training_data = data_sequential.iloc[5:-10].copy()
 
