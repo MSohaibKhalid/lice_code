@@ -1504,3 +1504,4 @@ if __name__=="__main__":
     s3.upload_file(temperature_file_name, bucket_name, s3_temperature_file_name)
     s3.upload_file(treatment_file_name, bucket_name, s3_treatment_file_name)
     s3.upload_file(liceType_file_name, bucket_name, s3_liceType_file_name)
+    print('################ The END ################')
