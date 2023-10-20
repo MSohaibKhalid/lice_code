@@ -1432,8 +1432,9 @@ if __name__=="__main__":
 
     for i in range(0, len(localities_list), batch_size):
         batch = localities_list[i:i + batch_size]
-        futures = [get_N_forecasts.remote(df=df, given_locality = loc, n_epoch = n_epochs, output_all = output_all_file_name, output_best = output_best_file_name, training_history = 'training_history.csv') for loc in batch]
+        futures = [get_N_forecasts.remote(df=df, given_locality = loc, n_epoch = n_epochs, output_all = output_all_file_name, output_best = output_best_file_name, training_history = training_history_file) for loc in batch]
         ray.get(futures)
+        print('* Training for batch {} complete. *\n'.format(i))
         s3.upload_file(output_all_file_name, bucket_name, s3_output_all_file_name)
         s3.upload_file(output_best_file_name, bucket_name, s3_output_best_file_name)
         s3.upload_file(training_history_file, bucket_name, s3_training_history_file)
@@ -1475,3 +1476,4 @@ if __name__=="__main__":
     best_df.to_csv(output_best_file_name, index=False)
     
     s3.upload_file(output_best_file_name, bucket_name, s3_output_best_file_name[:-4]+'_'+datetime.now().strftime('%Y-%m-%d')+'.csv')
+    print('################ The END ################')
