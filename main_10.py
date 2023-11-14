@@ -36,7 +36,7 @@ import datetime
 import ray
 ray.init()
 
-from lice_code_30 import *
+from lice_code_10 import *
 
 output_all_file_name = 'all_results_top10_corr_test.csv'
 output_best_file_name ='best_results_top10_corr_test.csv'
