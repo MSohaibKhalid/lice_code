@@ -1456,7 +1456,7 @@ if __name__=="__main__":
 
     for i in range(0, len(localities_list), batch_size):
         batch = localities_list[i:i + batch_size]
-        futures = [get_N_forecasts.remote(df=df, given_locality = loc, n_epoch = n_epochs, output_all = output_all_file_name, output_best = output_best_file_name, training_history = 'training_history.csv') for loc in batch]
+        futures = [get_N_forecasts.remote(df=df, given_locality = loc, n_epoch = n_epochs, output_all = output_all_file_name, output_best = output_best_file_name, training_history = training_history_file) for loc in batch]
         ray.get(futures)
         s3.upload_file(output_all_file_name, bucket_name, s3_output_all_file_name)
         s3.upload_file(output_best_file_name, bucket_name, s3_output_best_file_name)
