@@ -40,6 +40,8 @@ from lice_code_30 import *
 
 if __name__=="__main__":
 
+    print("Running main_30")
+
     output_all_file_name = 'all_results_top30_corr_test.csv'
     output_best_file_name ='best_results_top30_corr_test.csv'
     training_history_file = 'training_history_top30_corr_test.csv'
