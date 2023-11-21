@@ -2,21 +2,17 @@ import requests
 import numpy as np
 import pandas as pd
 import datetime
-from datetime import datetime
-import dateutil.relativedelta as relativedelta
-from sklearn.linear_model import LinearRegression
-from sklearn.metrics import mean_absolute_error, r2_score
-from sklearn.preprocessing import StandardScaler
 import os
-import json
-import random
-from statsmodels.tsa.vector_ar.var_model import VAR
-from sklearn.preprocessing import MinMaxScaler
 from math import radians
 from ast import literal_eval as convert_it
 import re
-
 from math import radians, sin, cos, sqrt, asin
+import traceback
+import ray
+
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_absolute_error
+from sklearn.preprocessing import StandardScaler
 import tensorflow as tf
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense
@@ -24,16 +20,6 @@ from tensorflow.keras.layers import Bidirectional
 from tensorflow.keras.layers import LSTM, Dense, Dropout
 from tensorflow import keras
 from tensorflow.keras import layers
-import pickle
-import matplotlib.pyplot as plt
-
-import boto3
-import pandas as pd
-import argparse
-import traceback
-import datetime
-
-import ray
 
 
 def get_headers_for_request(client_id, client_secret):
@@ -564,13 +550,14 @@ def get_next_weeks(cond, n = 5):
 
 
 
-def get_top_K_localities(given_locality, given_locality_df, df, year, week, top_k):
+def get_top_K_localities(given_locality, given_locality_df, non_zero_entries_indices, df, year, week, top_k):
     # Calculate the correlation coefficients for each locality
     correlation_coeffs = {}
     for locality in df['localityNo'].unique():
         if locality != given_locality:
-
-            locality_df = df[df['localityNo'] == locality]
+            locality_df = df[df['localityNo'] == locality].reset_index(drop=True).copy()
+            locality_df = locality_df[non_zero_entries_indices].reset_index(drop=True)
+            
             # Filter the data for the specific week and year
             week_year_data = pd.DataFrame()
             week_year_data = pd.concat([week_year_data, locality_df[locality_df['year'] < year]])
@@ -610,8 +597,8 @@ def prepare_dataset(df, given_locality, top_k_localities, year, week):
             data["mechanicalEntirity"] = [0]*5+list(week_year_data["mechanicalEntirity"])
             data["chemicalTreatment"] = [0]*5+list(week_year_data["chemicalTreatment"])
             data["chemicalEntirity"] = [0]*5+list(week_year_data["chemicalEntirity"])
-            # data["avgMobileLice"] = [0]*5+list(week_year_data["avgMobileLice"])
-            # data["avgStationaryLice"] = [0]*5+list(week_year_data["avgStationaryLice"])
+            data["avgMobileLice"] = [0]*5+list(week_year_data["avgMobileLice"])
+            data["avgStationaryLice"] = [0]*5+list(week_year_data["avgStationaryLice"])
         else:
             data[str(locality)] = [0]*5+list(week_year_data["value"])
             data[str(locality) + "_temperature"] = [0]*5+list(week_year_data["temperature"])
@@ -619,8 +606,8 @@ def prepare_dataset(df, given_locality, top_k_localities, year, week):
             data[str(locality) + "_mechanicalEntirity"] = [0]*5+list(week_year_data["mechanicalEntirity"])
             data[str(locality) + "_chemicalTreatment"] = [0]*5+list(week_year_data["chemicalTreatment"])
             data[str(locality) + "_chemicalEntirity"] = [0]*5+list(week_year_data["chemicalEntirity"])
-            # data[str(locality) + "_avgMobileLice"] = [0]*5+list(week_year_data["avgMobileLice"])
-            # data[str(locality) + "_avgStationaryLice"] = [0]*5+list(week_year_data["avgStationaryLice"])
+            data[str(locality) + "_avgMobileLice"] = [0]*5+list(week_year_data["avgMobileLice"])
+            data[str(locality) + "_avgStationaryLice"] = [0]*5+list(week_year_data["avgStationaryLice"])
 
     return data
 
@@ -1003,13 +990,10 @@ def max_difference_between_arrays(arr1, arr2):
     # Ensure both arrays are 1D
     array1 = np.ravel(arr1)
     array2 = np.ravel(arr2)
-
     # Calculate the absolute difference between corresponding elements
     difference_array = np.abs(array1 - array2)
-
     # Find the maximum difference
     max_difference = np.max(difference_array)
-
     return max_difference
 
 
@@ -1018,28 +1002,30 @@ def get_N_forecasts(df, given_locality = 13677, N = 5, top_k = 10, lr = 1e-3, n_
 
     print("#"*100)
     print("Generating results for Locality Number:", given_locality)
-
+    
     # Get the current date and time when the code starts
     start_time = datetime.datetime.now()
 
     try:
-        given_locality_df = df[df['localityNo'] == given_locality]
-
+        given_locality_df = df[df['localityNo'] == given_locality].reset_index(drop=True)
+        non_zero_entries_indices = (given_locality_df['value'] != 0)
+        given_locality_df = given_locality_df[non_zero_entries_indices].reset_index(drop=True)
+        
         # Get the last non-zero year and week for the given locality
-        last_week_data = given_locality_df[given_locality_df['value'] != 0].tail(1).reset_index(drop=True)
-        year = last_week_data.year.min()
-        week = last_week_data[last_week_data["year"] == year]['week'].min()
+        last_week_data = given_locality_df.tail(1).reset_index(drop=True)
+        year = last_week_data['year'].values[0]
+        week = last_week_data['week'].values[0]
         latest_lice_value = last_week_data['value'].values[0]
 
-        # Filter the data for the specific week and year
-        week_year_data = pd.DataFrame()
-        week_year_data = pd.concat([week_year_data, given_locality_df[given_locality_df['year'] < year]])
-        week_year_data = pd.concat([week_year_data, given_locality_df[(given_locality_df['week'] <= week) & (given_locality_df['year'] == year)]])
+        # # Filter the data for the specific week and year
+        # week_year_data = pd.DataFrame()
+        # week_year_data = pd.concat([week_year_data, given_locality_df[given_locality_df['year'] < year]])
+        # week_year_data = pd.concat([week_year_data, given_locality_df[(given_locality_df['week'] <= week) & (given_locality_df['year'] == year)]])
 
-        given_locality_df = week_year_data.copy()
+        # given_locality_df = week_year_data.copy()
 
         # Extract the localityNos from the top K correlated localities
-        top_k_localities = get_top_K_localities(given_locality, given_locality_df, df, year, week, top_k)
+        top_k_localities = get_top_K_localities(given_locality, given_locality_df, non_zero_entries_indices, df, year, week, top_k)
 
         best_model_specs = {}
         best_model_specs['name'] = "none"
@@ -1082,7 +1068,7 @@ def get_N_forecasts(df, given_locality = 13677, N = 5, top_k = 10, lr = 1e-3, n_
 
         ################################ Preparing Sequential TRAINING DATA ################################
         # Create a DataFrame to store the training data
-        data_sequential = data[['value', 'temperature', 'mechanicalTreatment', 'mechanicalEntirity', 'chemicalTreatment', 'chemicalEntirity']]
+        data_sequential = data[['value', 'temperature', 'mechanicalTreatment', 'mechanicalEntirity', 'chemicalTreatment', 'chemicalEntirity', 'avgMobileLice', 'avgStationaryLice']]
         training_data = data_sequential.iloc[5:-10].copy()
 
         multivariate_train_data = training_data.values
@@ -1107,13 +1093,13 @@ def get_N_forecasts(df, given_locality = 13677, N = 5, top_k = 10, lr = 1e-3, n_
         mae_MultiLSTM, preds_MultiLSTM, future_MultiLSTM, best_model_specs = get_results_MultiLSTM(X_train, y_train, X_trained_scaled_chunk, X_test_scaled_M4, actual_values, scaler_seq, window_size, batch_size, best_model_specs, n_epoch, lr, N)
         mae_MultiBiLSTM, preds_MultiBiLSTM, future_MultiBiLSTM, best_model_specs = get_results_MultiBiLSTM(X_train, y_train, X_trained_scaled_chunk, X_test_scaled_M4, actual_values, scaler_seq, window_size, batch_size, best_model_specs, n_epoch, lr, N)
         mae_transformer, preds_transformer, future_transformer, best_model_specs = get_results_transformer(X_train, y_train, X_trained_scaled_chunk, X_test_scaled_M4, actual_values, scaler_seq, window_size, batch_size, best_model_specs, n_epoch, lr, N)
-
+        
 
         ##############################################################################################################
         ##############################################################################################################
-
+        
         ################################ Preparing Rolling Window TRAINING DATA ################################
-
+        
         data_rolling = data[['value'] + [str(loc) for loc in top_k_localities]]
         training_data = data_rolling.iloc[5:-10].copy()
         trainY = training_data['value']
@@ -1124,7 +1110,7 @@ def get_N_forecasts(df, given_locality = 13677, N = 5, top_k = 10, lr = 1e-3, n_
 
         ##############################################################################################################
         ##############################################################################################################
-
+        
         mae_mean_NN, preds_mean_NN, future_mean_NN, best_model_specs = get_results_comb("mean_NN", mae_mean, preds_mean, future_mean, mae_NN, preds_NN, future_NN, actual_values, best_model_specs)
         mae_lastNonZero_NN, preds_lastNonZero_NN, future_lastNonZero_NN, best_model_specs = get_results_comb("lastNonZero_NN", mae_lastNonZero, preds_lastNonZero, future_lastNonZero, mae_NN, preds_NN, future_NN, actual_values, best_model_specs)
 
@@ -1148,8 +1134,8 @@ def get_N_forecasts(df, given_locality = 13677, N = 5, top_k = 10, lr = 1e-3, n_
 
         loc_treatments = {}
         lice_threshold_dict = {}
-        # avgMobileLice_threshold_dict = {}
-        # avgStationaryLice_threshold_dict = {}
+        avgMobileLice_threshold_dict = {}
+        avgStationaryLice_threshold_dict = {}
         lice_decay_dict = {}
 
         preds = best_model_specs['future_values'].copy()
@@ -1170,8 +1156,8 @@ def get_N_forecasts(df, given_locality = 13677, N = 5, top_k = 10, lr = 1e-3, n_
                 if len(treat_chunk) != 0:
                     loc_treatments[loc] = len(treat_chunk)
                     lice_threshold_dict[loc] = get_weighted_sum(treat_chunk, "value", contributions)
-                    # avgMobileLice_threshold_dict[loc] = get_weighted_sum(treat_chunk, "avgMobileLice", contributions)
-                    # avgStationaryLice_threshold_dict[loc] = get_weighted_sum(treat_chunk, "avgStationaryLice", contributions)
+                    avgMobileLice_threshold_dict[loc] = get_weighted_sum(treat_chunk, "avgMobileLice", contributions)
+                    avgStationaryLice_threshold_dict[loc] = get_weighted_sum(treat_chunk, "avgStationaryLice", contributions)
                     lice_decay_dict[loc] = get_weighted_sum(treat_chunk, decays, contributions)
 
             weights = {}
@@ -1182,13 +1168,13 @@ def get_N_forecasts(df, given_locality = 13677, N = 5, top_k = 10, lr = 1e-3, n_
                 for k, v in loc_treatments.items():
                     weights[k] = v/total_treatmnets
 
-                # avgMobileLice_threshold = 0.0
-                # avgStationaryLice_threshold = 0.0
+                avgMobileLice_threshold = 0.0
+                avgStationaryLice_threshold = 0.0
                 avgLice_decay_val = 0.0
                 for loc, w in weights.items():
                     lice_threshold += w*lice_threshold_dict[loc]
-                    # avgMobileLice_threshold += w*avgMobileLice_threshold_dict[loc]
-                    # avgStationaryLice_threshold += w*avgStationaryLice_threshold_dict[loc]
+                    avgMobileLice_threshold += w*avgMobileLice_threshold_dict[loc]
+                    avgStationaryLice_threshold += w*avgStationaryLice_threshold_dict[loc]
                     avgLice_decay_val += w*lice_decay_dict[loc]
 
             else:
@@ -1296,7 +1282,7 @@ def get_N_forecasts(df, given_locality = 13677, N = 5, top_k = 10, lr = 1e-3, n_
             temp_df.to_csv(output_all, index=False)
 
         ##############################################################################################################
-        ##############################################################################################################
+        ##############################################################################################################        
 
         best_df = pd.DataFrame({
             "localityNo": [given_locality],
@@ -1345,14 +1331,14 @@ def get_N_forecasts(df, given_locality = 13677, N = 5, top_k = 10, lr = 1e-3, n_
             'end_time': [str(end_time)],
             'duration': [str(minutes)+' mins and '+str(seconds)+' secs'],
         })
-
+        
         if os.path.isfile(training_history):
             train_hist_df.to_csv(training_history, mode='a', header=False, index=False)
         else:
             train_hist_df.to_csv(training_history, index=False)
 
 
-
+    
     except Exception as e:
         # Get the traceback as a string
         traceback_str = traceback.format_exc()
@@ -1373,7 +1359,7 @@ def get_N_forecasts(df, given_locality = 13677, N = 5, top_k = 10, lr = 1e-3, n_
             'end_time': [str(end_time)],
             'duration': [str(minutes)+' mins and '+str(seconds)+' secs'],
         })
-
+        
         if os.path.isfile(training_history):
             train_hist_df.to_csv(training_history, mode='a', header=False, index=False)
         else:
