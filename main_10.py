@@ -22,8 +22,7 @@ def get_arguments():
     parser.add_argument("max_localities", type=int, default=1500, help="Maximum number of localities to run code")
     parser.add_argument("n_epochs", type=int, default=200, help="Number of epochs")
     parser.add_argument("top_k", type=int, default=10, help="Number of top correlated localities to consider")
-
-    return parser.parse_args()
+    return parser
 
 
 if __name__=="__main__":
@@ -43,7 +42,8 @@ if __name__=="__main__":
     data_file_name = 'preprocessed_data.csv'
 
     # Getting all arguments necessary for forecasting
-    args = get_arguments()
+    args_parser = get_arguments()
+    args = args_parser.parse_args()
 
     # Training parameters
     fetch_new_data = args.fetch_new_data

@@ -1,4 +1,4 @@
-from lice_funcs_10 import *
+from lice_funcs import *
 
 import boto3
 import pandas as pd
@@ -110,9 +110,9 @@ if __name__=="__main__":
                                             for loc in batch]
         ray.get(futures)
 
-        # s3.upload_file(output_all_file_name, bucket_name, output_all_file_name)
-        # s3.upload_file(output_best_file_name, bucket_name, output_best_file_name)
-        # s3.upload_file(training_history_file, bucket_name, training_history_file)
+        s3.upload_file(output_all_file_name, bucket_name, output_all_file_name)
+        s3.upload_file(output_best_file_name, bucket_name, output_best_file_name)
+        s3.upload_file(training_history_file, bucket_name, training_history_file)
 
 
     best_df = pd.read_csv(output_best_file_name)
@@ -153,9 +153,9 @@ if __name__=="__main__":
     s3.upload_file(output_best_file_name, bucket_name, \
                    output_best_file_name[:-4]+'_'+datetime.datetime.now().strftime('%Y-%m-%d')+'.csv')
 
-    # s3.upload_file(avgFL_file_name, bucket_name, avgFL_file_name)
-    # s3.upload_file(temperature_file_name, bucket_name, temperature_file_name)
-    # s3.upload_file(treatment_file_name, bucket_name, treatment_file_name)
-    # s3.upload_file(liceType_file_name, bucket_name, liceType_file_name)
+    s3.upload_file(avgFL_file_name, bucket_name, avgFL_file_name)
+    s3.upload_file(temperature_file_name, bucket_name, temperature_file_name)
+    s3.upload_file(treatment_file_name, bucket_name, treatment_file_name)
+    s3.upload_file(liceType_file_name, bucket_name, liceType_file_name)
     
     print('\n\n################ Results Generated ################')
