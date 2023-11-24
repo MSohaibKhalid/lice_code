@@ -27,9 +27,9 @@ def get_arguments():
 
 if __name__=="__main__":
 
-    output_all_file_name = 'all_results_non_zeros_30.csv'
-    output_best_file_name ='best_results_non_zeros_30.csv'
-    training_history_file = 'training_history_non_zeros_30.csv'
+    output_all_file_name = 'all_results_extended_data.csv'
+    output_best_file_name ='best_results_extended_data.csv'
+    training_history_file = 'training_history_extended_data.csv'
 
     info_file_name = "locality_info.csv"
     limits_file_name = "lice_limits.csv"
@@ -111,9 +111,9 @@ if __name__=="__main__":
                                             for loc in batch]
         ray.get(futures)
 
-        # s3.upload_file(output_all_file_name, bucket_name, output_all_file_name)
-        # s3.upload_file(output_best_file_name, bucket_name, output_best_file_name)
-        # s3.upload_file(training_history_file, bucket_name, training_history_file)
+        s3.upload_file(output_all_file_name, bucket_name, output_all_file_name)
+        s3.upload_file(output_best_file_name, bucket_name, output_best_file_name)
+        s3.upload_file(training_history_file, bucket_name, training_history_file)
 
 
     best_df = pd.read_csv(output_best_file_name)
