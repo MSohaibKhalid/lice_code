@@ -80,7 +80,7 @@ if __name__=="__main__":
     #                 fetch_new_data = fetch_new_data)
     
     # s3.upload_file(data_file_name, bucket_name, data_file_name)
-    s3.download_file(bucket_name, liceType_file_name, liceType_file_name)
+    s3.download_file(bucket_name, data_file_name, data_file_name)
 
     # Read the CSV file into a DataFrame.
     df = pd.read_csv(data_file_name)
