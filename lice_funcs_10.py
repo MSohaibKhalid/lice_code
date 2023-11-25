@@ -551,7 +551,7 @@ def get_next_weeks(cond, n = 5):
 
 
 
-def get_top_K_localities(given_locality, given_locality_df, non_zero_entries_indices, df, year, week, top_k):
+def get_top_K_localities(given_locality, given_locality_df, non_zero_entries_indices, df, top_k):
     # Calculate the correlation coefficients for each locality
     correlation_coeffs = {}
     for locality in df['localityNo'].unique():
@@ -559,11 +559,11 @@ def get_top_K_localities(given_locality, given_locality_df, non_zero_entries_ind
             locality_df = df[df['localityNo'] == locality].reset_index(drop=True).copy()
             locality_df = locality_df[non_zero_entries_indices].reset_index(drop=True)
             
-            # Filter the data for the specific week and year
-            week_year_data = pd.DataFrame()
-            week_year_data = pd.concat([week_year_data, locality_df[locality_df['year'] < year]])
-            week_year_data = pd.concat([week_year_data, locality_df[(locality_df['week'] <= week) & (locality_df['year'] == year)]])
-            locality_df = week_year_data.copy()
+            # # Filter the data for the specific week and year
+            # week_year_data = pd.DataFrame()
+            # week_year_data = pd.concat([week_year_data, locality_df[locality_df['year'] < year]])
+            # week_year_data = pd.concat([week_year_data, locality_df[(locality_df['week'] <= week) & (locality_df['year'] == year)]])
+            # locality_df = week_year_data.copy()
 
             std_given_locality = given_locality_df['value'].std()
             std_locality = locality_df['value'].std()
@@ -580,20 +580,14 @@ def get_top_K_localities(given_locality, given_locality_df, non_zero_entries_ind
     return top_k_localities
 
 
-def extend_values(df, col, n):
-    df['ds'] = pd.to_datetime(df['year'].astype(str) + df['week'].astype(str) + '0', format='%Y%U%w')
-    df.rename(columns={col: 'y'}, inplace=True)
-    df = df[['ds', 'y']].reset_index(drop=True)
+def extend_values(df_loc, col, n):
+    df_loc['ds'] = pd.to_datetime(df_loc['year'].astype(str) + df_loc['week'].astype(str) + '0', format='%Y%U%w')
+    df_loc.rename(columns={col: 'y'}, inplace=True)
+    df_loc = df_loc[['ds', 'y']].reset_index(drop=True)
 
-    # Drop duplicates from the 'ds' column
-    df = df.drop_duplicates(subset=['ds'])
-
-    # Split the data into training and test sets
-    train = df[:-n]  # Use all except the last 5 values for training
-    test = df[-n:]   # Use the last 5 values for testing
     # Create and fit the Prophet model
     model = Prophet(weekly_seasonality=True)
-    model.fit(train)
+    model.fit(df_loc)
     # Create a dataframe with the future dates for forecasting
     future = model.make_future_dataframe(periods=n, freq='W')  # Forecasting for the next 5 days
 
@@ -612,21 +606,21 @@ def prepare_dataset(df, given_locality, non_zero_entries_indices, top_k_localiti
         locality_df = locality_df[non_zero_entries_indices].reset_index(drop=True)
         
         if (locality == given_locality):
-            data['value'] = list(locality_df["value"])+[0]*5
+            data['value'] = list(locality_df["value"])+[0]*n
             data["temperature"] = extend_values(locality_df, 'temperature', n)
-            data["mechanicalTreatment"] = list(locality_df["mechanicalTreatment"])+[0]*5
-            data["mechanicalEntirity"] = list(locality_df["mechanicalEntirity"])+[0]*5
-            data["chemicalTreatment"] = list(locality_df["chemicalTreatment"])+[0]*5
-            data["chemicalEntirity"] = list(locality_df["chemicalEntirity"])+[0]*5
+            data["mechanicalTreatment"] = list(locality_df["mechanicalTreatment"])+[0]*n
+            data["mechanicalEntirity"] = list(locality_df["mechanicalEntirity"])+[0]*n
+            data["chemicalTreatment"] = list(locality_df["chemicalTreatment"])+[0]*n
+            data["chemicalEntirity"] = list(locality_df["chemicalEntirity"])+[0]*n
             data["avgMobileLice"] = extend_values(locality_df, 'avgMobileLice', n)
             data["avgStationaryLice"] = extend_values(locality_df, 'avgStationaryLice', n)
         else:
             data[str(locality)] = extend_values(locality_df, 'value', n)
             data[str(locality) + "_temperature"] = extend_values(locality_df, 'temperature', n)
-            data[str(locality) + "_mechanicalTreatment"] = list(locality_df["mechanicalTreatment"])+[0]*5
-            data[str(locality) + "_mechanicalEntirity"] = list(locality_df["mechanicalEntirity"])+[0]*5
-            data[str(locality) + "_chemicalTreatment"] = list(locality_df["chemicalTreatment"])+[0]*5
-            data[str(locality) + "_chemicalEntirity"] = list(locality_df["chemicalEntirity"])+[0]*5
+            data[str(locality) + "_mechanicalTreatment"] = list(locality_df["mechanicalTreatment"])+[0]*n
+            data[str(locality) + "_mechanicalEntirity"] = list(locality_df["mechanicalEntirity"])+[0]*n
+            data[str(locality) + "_chemicalTreatment"] = list(locality_df["chemicalTreatment"])+[0]*n
+            data[str(locality) + "_chemicalEntirity"] = list(locality_df["chemicalEntirity"])+[0]*n
             data[str(locality) + "_avgMobileLice"] = extend_values(locality_df, 'avgMobileLice', n)
             data[str(locality) + "_avgStationaryLice"] = extend_values(locality_df, 'avgStationaryLice', n)
 
@@ -1019,7 +1013,7 @@ def max_difference_between_arrays(arr1, arr2):
 
 
 @ray.remote
-def get_N_forecasts(df, given_locality = 13677, N = 5, top_k = 10, lr = 1e-3, n_epoch = 200, window_size=10, batch_size=8, output_all='all_results.csv', output_best='best_results.csv', training_history = 'training_history.csv'):
+def get_N_forecasts(df, given_locality = 19015, N = 5, top_k = 10, lr = 1e-3, n_epoch = 200, window_size=10, batch_size=8, output_all='all_results.csv', output_best='best_results.csv', training_history = 'training_history.csv'):
 
     print("#"*100)
     print("Generating results for Locality Number:", given_locality)
@@ -1039,7 +1033,7 @@ def get_N_forecasts(df, given_locality = 13677, N = 5, top_k = 10, lr = 1e-3, n_
         latest_lice_value = last_week_data['value'].values[0]
 
         # Extract the localityNos from the top K correlated localities
-        top_k_localities = get_top_K_localities(given_locality, given_locality_df, non_zero_entries_indices, df, year, week, top_k)
+        top_k_localities = get_top_K_localities(given_locality, given_locality_df, non_zero_entries_indices, df, top_k)
 
         best_model_specs = {}
         best_model_specs['name'] = "none"
