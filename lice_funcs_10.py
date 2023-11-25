@@ -585,6 +585,9 @@ def extend_values(df, col, n):
     df.rename(columns={col: 'y'}, inplace=True)
     df = df[['ds', 'y']].reset_index(drop=True)
 
+    # Drop duplicates from the 'ds' column
+    df = df.drop_duplicates(subset=['ds'])
+
     # Split the data into training and test sets
     train = df[:-n]  # Use all except the last 5 values for training
     test = df[-n:]   # Use the last 5 values for testing
@@ -597,6 +600,7 @@ def extend_values(df, col, n):
     # Generate the forecast
     forecast = model.predict(future)
     return list(forecast['yhat'])
+
 
 
 def prepare_dataset(df, given_locality, non_zero_entries_indices, top_k_localities, year, week, n):
