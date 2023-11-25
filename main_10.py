@@ -4,6 +4,7 @@ import boto3
 import pandas as pd
 import argparse
 import datetime
+import os
 
 import ray
 ray.init()
@@ -125,48 +126,51 @@ if __name__=="__main__":
         except:
             print(" * Error uploading training history file * ")
 
+    if os.path.exists(output_best_file_name):
+        best_df = pd.read_csv(output_best_file_name)
+        best_df = best_df.drop_duplicates(subset=['localityNo'], keep="last").reset_index(drop=True)
 
-    best_df = pd.read_csv(output_best_file_name)
-    best_df = best_df.drop_duplicates(subset=['localityNo'], keep="last").reset_index(drop=True)
+        limits = pd.read_csv(limits_file_name)
+        info = pd.read_csv(info_file_name)
 
-    limits = pd.read_csv(limits_file_name)
-    info = pd.read_csv(info_file_name)
+        lice_over_limit = []
+        pred_5th_over_limit = []
 
-    lice_over_limit = []
-    pred_5th_over_limit = []
+        for locality in best_df.localityNo.tolist():
+            row_best_df = best_df[best_df['localityNo'] == locality].reset_index(drop=True)
+            latest_lice_value = row_best_df['latest_lice_value'].values[0]
+            pred_5th_value = row_best_df['pred_5th_value'].values[0]
+            reported_week = row_best_df['reported_week'].values[0]
 
-    for locality in best_df.localityNo.tolist():
-        row_best_df = best_df[best_df['localityNo'] == locality].reset_index(drop=True)
-        latest_lice_value = row_best_df['latest_lice_value'].values[0]
-        pred_5th_value = row_best_df['pred_5th_value'].values[0]
-        reported_week = row_best_df['reported_week'].values[0]
+            row_info = info[info['localityNo'] == locality].reset_index(drop=True)
+            prod_area = row_info['productionAreaID'].values[0]
 
-        row_info = info[info['localityNo'] == locality].reset_index(drop=True)
-        prod_area = row_info['productionAreaID'].values[0]
+            limit = limits.loc[limits['Week'] == reported_week, "PA"+str(prod_area)].values[0]
 
-        limit = limits.loc[limits['Week'] == reported_week, "PA"+str(prod_area)].values[0]
-
-        if latest_lice_value > limit:
-            lice_over_limit.append('yes')
-        else:
-            lice_over_limit.append('no')
+            if latest_lice_value > limit:
+                lice_over_limit.append('yes')
+            else:
+                lice_over_limit.append('no')
+            
+            if pred_5th_value > limit:
+                pred_5th_over_limit.append('yes')
+            else:
+                pred_5th_over_limit.append('no')
+            
+        best_df['lice_over_limit'] = lice_over_limit
+        best_df['5th_pred_over_limit'] = pred_5th_over_limit
+        best_df['rank'] = best_df['mae'].rank(ascending=True).astype(int)
+        best_df.to_csv(output_best_file_name, index=False)
         
-        if pred_5th_value > limit:
-            pred_5th_over_limit.append('yes')
-        else:
-            pred_5th_over_limit.append('no')
-        
-    best_df['lice_over_limit'] = lice_over_limit
-    best_df['5th_pred_over_limit'] = pred_5th_over_limit
-    best_df['rank'] = best_df['mae'].rank(ascending=True).astype(int)
-    best_df.to_csv(output_best_file_name, index=False)
-    
-    s3.upload_file(output_best_file_name, bucket_name, \
-                   output_best_file_name[:-4]+'_'+datetime.datetime.now().strftime('%Y-%m-%d')+'.csv')
+        s3.upload_file(output_best_file_name, bucket_name, \
+                    output_best_file_name[:-4]+'_'+datetime.datetime.now().strftime('%Y-%m-%d')+'.csv')
 
-    # s3.upload_file(avgFL_file_name, bucket_name, avgFL_file_name)
-    # s3.upload_file(temperature_file_name, bucket_name, temperature_file_name)
-    # s3.upload_file(treatment_file_name, bucket_name, treatment_file_name)
-    # s3.upload_file(liceType_file_name, bucket_name, liceType_file_name)
+        # s3.upload_file(avgFL_file_name, bucket_name, avgFL_file_name)
+        # s3.upload_file(temperature_file_name, bucket_name, temperature_file_name)
+        # s3.upload_file(treatment_file_name, bucket_name, treatment_file_name)
+        # s3.upload_file(liceType_file_name, bucket_name, liceType_file_name)
+
+    else:
+        print("* No best results file exists * ")
     
     print('\n\n################ Results Generated ################')
