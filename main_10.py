@@ -73,12 +73,13 @@ if __name__=="__main__":
     s3.download_file(bucket_name, treatment_file_name, treatment_file_name)
     s3.download_file(bucket_name, liceType_file_name, liceType_file_name)
 
-    get_Latest_Data(avgFL_file_name, temperature_file_name, \
-                    treatment_file_name, liceType_file_name, data_file_name,
-                    client_id = api_client_id, client_secret = api_client_secret, \
-                    fetch_new_data = fetch_new_data)
+    # get_Latest_Data(avgFL_file_name, temperature_file_name, \
+    #                 treatment_file_name, liceType_file_name, data_file_name,
+    #                 client_id = api_client_id, client_secret = api_client_secret, \
+    #                 fetch_new_data = fetch_new_data)
     
-    s3.upload_file(data_file_name, bucket_name, data_file_name)
+    # s3.upload_file(data_file_name, bucket_name, data_file_name)
+    s3.download_file(bucket_name, liceType_file_name, liceType_file_name)
 
     # Read the CSV file into a DataFrame.
     df = pd.read_csv(data_file_name)
@@ -100,7 +101,7 @@ if __name__=="__main__":
 
 
     localities_list = [22775, 20075, 29576, 11864, 35477, 38957, 23816, 11966, 20316, 11318, 35237, 12662, 35617, 10660, 12108, 12884, 38577, 25855, 11964, 10870, 32297, 45029, 11435, 13996, 25235, 11225, 11861, 11087, 13887, 35777, 10837, 12714, 13570, 13254, 33157, 10811, 13227, 45017, 40377, 10332, 26775, 11355, 36099, 10635, 40357, 11332, 13541, 31117, 30437, 13139, 22335, 14679, 12890, 18657, 27996, 12244, 32637, 13249, 36137, 10505, 36118, 34357, 13567, 10317, 18717, 12897, 12904, 13677, 19015, 33697, 29697, 35417, 34037]
-    # localities_list = df['localityNo'].unique().tolist()[:max_localities]
+    localities_list = df['localityNo'].unique().tolist()[:max_localities]
 
     for i in range(0, len(localities_list), batch_size):
         batch = localities_list[i:i + batch_size]
@@ -114,15 +115,15 @@ if __name__=="__main__":
         try:
             s3.upload_file(output_all_file_name, bucket_name, output_all_file_name)
         except:
-            print("No All results file to upload")
+            print(" * No All results file to upload * ")
         try:
             s3.upload_file(output_best_file_name, bucket_name, output_best_file_name)
         except:
-            print("No Best results file to upload")
+            print(" * No Best results file to upload * ")
         try:
             s3.upload_file(training_history_file, bucket_name, training_history_file)
         except:
-            print("Error uploading training history file")
+            print(" * Error uploading training history file * ")
 
 
     best_df = pd.read_csv(output_best_file_name)

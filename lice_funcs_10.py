@@ -583,6 +583,7 @@ def get_top_K_localities(given_locality, given_locality_df, non_zero_entries_ind
 def extend_values(df, col, n):
     df['ds'] = pd.to_datetime(df['year'].astype(str) + df['week'].astype(str) + '0', format='%Y%U%w')
     df.rename(columns={col: 'y'}, inplace=True)
+    df = df[['ds', 'y']].reset_index(drop=True)
 
     # Split the data into training and test sets
     train = df[:-n]  # Use all except the last 5 values for training
