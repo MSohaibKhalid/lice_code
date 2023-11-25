@@ -110,10 +110,19 @@ if __name__=="__main__":
                                            training_history = training_history_file) \
                                             for loc in batch]
         ray.get(futures)
-
-        s3.upload_file(output_all_file_name, bucket_name, output_all_file_name)
-        s3.upload_file(output_best_file_name, bucket_name, output_best_file_name)
-        s3.upload_file(training_history_file, bucket_name, training_history_file)
+        
+        try:
+            s3.upload_file(output_all_file_name, bucket_name, output_all_file_name)
+        except:
+            print("No All results file to upload")
+        try:
+            s3.upload_file(output_best_file_name, bucket_name, output_best_file_name)
+        except:
+            print("No Best results file to upload")
+        try:
+            s3.upload_file(training_history_file, bucket_name, training_history_file)
+        except:
+            print("Error uploading training history file")
 
 
     best_df = pd.read_csv(output_best_file_name)
