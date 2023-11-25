@@ -22,6 +22,10 @@ from tensorflow.keras.layers import LSTM, Dense, Dropout
 from tensorflow import keras
 from tensorflow.keras import layers
 
+import logging
+
+logging.getLogger("cmdstanpy").disabled = True # Turns 'cmdstanpy' logs off
+
 
 def get_headers_for_request(client_id, client_secret):
     ### Setting up API request
@@ -580,7 +584,9 @@ def get_top_K_localities(given_locality, given_locality_df, non_zero_entries_ind
     return top_k_localities
 
 
-def extend_values(df_loc, col, n):
+def extend_values(df, col, n):
+    df_loc = df.copy()
+
     df_loc['ds'] = pd.to_datetime(df_loc['year'].astype(str) + df_loc['week'].astype(str) + '0', format='%Y%U%w')
     df_loc.rename(columns={col: 'y'}, inplace=True)
     df_loc = df_loc[['ds', 'y']].reset_index(drop=True)
