@@ -1224,7 +1224,7 @@ def get_N_forecasts(df, given_locality = 19015, N = 5, top_k = 10, lr = 1e-3, n_
             lice_threshold = 0.0
 
         weeks_missed = np.zeros(N)
-        weeks_diff = np.abs(np.array(best_model_specs['preds']) - np.array(actual_values))
+        weeks_diff = np.abs(np.array(best_model_specs['future_values']) - np.array(actual_values))
         weeks_missed[weeks_diff > 0.1] = 1.0
 
         ##############################################################################################################
@@ -1319,8 +1319,8 @@ def get_N_forecasts(df, given_locality = 19015, N = 5, top_k = 10, lr = 1e-3, n_
             "reported_week": [week],
             "reported_year": [year],
             "latest_lice_value": [latest_lice_value],
-            "pred_5th_value": [best_model_specs['preds'][-1]],
-            "future_5th_value": [best_model_specs['future_values'][-1]],
+            "pred_5th_value": [best_model_specs['future_values'][-1]],
+            # "future_5th_value": [best_model_specs['future_values'][-1]],
             "neighbours": [str(top_k_localities)],
             "missed_weeks": [int(np.sum(weeks_missed))],
             "best_model": [best_model_specs['name']],
