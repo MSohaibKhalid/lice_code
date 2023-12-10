@@ -1198,6 +1198,20 @@ def get_N_forecasts(df, given_locality = 19015, N = 5, top_k = 10, lr = 1e-3, n_
         week_for_treatment = -1
         todo_treatment = "No"
         preds_with_decay = list(preds)
+        preds_xticks = []
+        week_val = None
+        year_val = year.copy()
+        new_year_week = None
+        for w in range(1,6):
+            if (w+week) > 52:
+                if new_year_week is None:
+                    new_year_week = w
+                week_val = w - new_year_week + 1
+                year_val = year_val + 1
+            else:
+                week_val = w+week
+
+            preds_xticks.append(f'Week-{week_val},{year_val}')
 
         if treatment_week is not None:
             todo_treatment = "Yes"
@@ -1311,7 +1325,7 @@ def get_N_forecasts(df, given_locality = 19015, N = 5, top_k = 10, lr = 1e-3, n_
             "missed_weeks": [int(np.sum(weeks_missed))],
             "best_model": [best_model_specs['name']],
             "mae": [best_model_specs['mae']],
-            "max_diff": [max_difference_between_arrays(best_model_specs['preds'], actual_values)],
+            "max_diff": [max_difference_between_arrays(best_model_specs['future_values'], actual_values)],
             "preds": [str(best_model_specs['preds'])],
             "future_values": [str(best_model_specs['future_values'])],
             "todo_treatment": [todo_treatment],
@@ -1319,6 +1333,7 @@ def get_N_forecasts(df, given_locality = 19015, N = 5, top_k = 10, lr = 1e-3, n_
             "treatment_threshold": [lice_threshold],
             "expected_decay": [avgLice_decay_val],
             "preds_with_decay": [str(preds_with_decay)],
+            "preds_xticks": [str(preds_xticks)],
         })
 
         if os.path.isfile(output_best):

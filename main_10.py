@@ -28,9 +28,9 @@ def get_arguments():
 
 if __name__=="__main__":
 
-    output_all_file_name = 'all_results_extended_data.csv'
-    output_best_file_name ='best_results_extended_data.csv'
-    training_history_file = 'training_history_extended_data.csv'
+    output_all_file_name = 'all_results.csv'
+    output_best_file_name ='best_results.csv'
+    training_history_file = 'training_history.csv'
 
     info_file_name = "locality_info.csv"
     limits_file_name = "lice_limits.csv"
@@ -102,6 +102,7 @@ if __name__=="__main__":
 
 
     localities_list = [22775, 20075, 29576, 11864, 35477, 38957, 23816, 11966, 20316, 11318, 35237, 12662, 35617, 10660, 12108, 12884, 38577, 25855, 11964, 10870, 32297, 45029, 11435, 13996, 25235, 11225, 11861, 11087, 13887, 35777, 10837, 12714, 13570, 13254, 33157, 10811, 13227, 45017, 40377, 10332, 26775, 11355, 36099, 10635, 40357, 11332, 13541, 31117, 30437, 13139, 22335, 14679, 12890, 18657, 27996, 12244, 32637, 13249, 36137, 10505, 36118, 34357, 13567, 10317, 18717, 12897, 12904, 13677, 19015, 33697, 29697, 35417, 34037]
+    localities_list  = localities_list[:5]
     # localities_list = df['localityNo'].unique().tolist()[:max_localities]
 
     for i in range(0, len(localities_list), batch_size):
@@ -173,4 +174,4 @@ if __name__=="__main__":
     else:
         print("* No best results file exists * ")
     
-    print('\n\n *** ### *** ### *** Results Generated ################ *** ### *** ### *** ')
+    print('\n\n *** ### *** ### *** CODE COMPLETE ################ *** ### *** ### *** ')
