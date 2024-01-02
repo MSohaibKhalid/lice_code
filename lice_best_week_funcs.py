@@ -1335,11 +1335,12 @@ def get_N_forecasts(df, given_locality = 19015, N = 5, top_k = 10, lr = 1e-3, n_
             }
             
             all_results_dict = merge_dict(all_results_dict, run_dict)
-
+        
+        all_results_df = pd.DataFrame(all_results_dict)
         if os.path.isfile(output_all):
-            all_results_dict.to_csv(output_all, mode='a', header=False, index=False)
+            all_results_df.to_csv(output_all, mode='a', header=False, index=False)
         else:
-            all_results_dict.to_csv(output_all, index=False)
+            all_results_df.to_csv(output_all, index=False)
 
         ##############################################################################################################
         ##############################################################################################################        
