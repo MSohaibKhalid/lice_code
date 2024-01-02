@@ -606,7 +606,7 @@ def extend_values(df, col, n):
 def prepare_dataset(df, given_locality, non_zero_entries_indices, top_k_localities, year, week, n, run):
     # Create a DataFrame to store the training data
     data = pd.DataFrame()
-    temp_df = df[df['localityNo'] == given_locality].reset_index(drop=True).copy()
+    temp_df = df[df['localityNo'] == given_locality].reset_index(drop=True)
     indices = temp_df[non_zero_entries_indices].index
 
     if run == "first":
@@ -615,7 +615,7 @@ def prepare_dataset(df, given_locality, non_zero_entries_indices, top_k_localiti
     
     # Iterate over each week to prepare the training data
     for locality in (list(top_k_localities) + [given_locality]):
-        locality_df = df[df['localityNo'] == locality].reset_index(drop=True).copy()
+        locality_df = df[df['localityNo'] == locality].reset_index(drop=True)
         locality_df = locality_df.loc[indices].reset_index(drop=True)
         
         if (locality == given_locality):
