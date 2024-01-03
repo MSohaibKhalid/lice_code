@@ -1061,8 +1061,8 @@ def get_N_forecasts(df, given_locality = 19015, N = 5, top_k = 10, lr = 1e-3, n_
 
         best_model_specs = {}
         best_model_specs['name'] = "none"
-        best_model_specs['preds'] = np.zeros(5)
-        best_model_specs['future_values'] = np.zeros(5)
+        best_model_specs['preds'] = np.zeros(N)
+        best_model_specs['future_values'] = np.zeros(N)
         best_model_specs['mae'] = 100
 
         model_LR = None
@@ -1071,6 +1071,8 @@ def get_N_forecasts(df, given_locality = 19015, N = 5, top_k = 10, lr = 1e-3, n_
         model_MultiLSTM = None
         model_MultiBiLSTM = None
         model_transformer = None
+
+        actual_values = np.zeros(N)
 
         all_results_dict = {
             "localityNo": [given_locality],
@@ -1083,7 +1085,7 @@ def get_N_forecasts(df, given_locality = 19015, N = 5, top_k = 10, lr = 1e-3, n_
 
             ################################ Preparing TRAINING DATA ################################
             # Create a DataFrame to store the training data
-            training_data = data.iloc[5:-10].copy()
+            training_data = data.iloc[:-2*N].copy()
 
             y_train = training_data['value']
             training_data = training_data.drop('value', axis=1)
