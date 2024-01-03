@@ -1116,7 +1116,7 @@ def get_N_forecasts(df, given_locality = 19015, N = 5, top_k = 10, lr = 1e-3, n_
             ################################ Preparing Sequential TRAINING DATA ################################
             # Create a DataFrame to store the training data
             data_sequential = data[['value', 'temperature', 'mechanicalTreatment', 'mechanicalEntirity', 'chemicalTreatment', 'chemicalEntirity', 'avgMobileLice', 'avgStationaryLice']]
-            training_data = data_sequential.iloc[5:-10].copy()
+            training_data = data_sequential.iloc[:-2*N].copy()
 
             multivariate_train_data = training_data.values
 
@@ -1148,7 +1148,7 @@ def get_N_forecasts(df, given_locality = 19015, N = 5, top_k = 10, lr = 1e-3, n_
             ################################ Preparing Rolling Window TRAINING DATA ################################
             
             data_rolling = data[['value'] + [str(loc) for loc in top_k_localities]]
-            training_data = data_rolling.iloc[5:-10].copy()
+            training_data = data_rolling.iloc[:-2*N].copy()
             trainY = training_data['value']
             trainX = training_data[[str(loc) for loc in top_k_localities]]
 
