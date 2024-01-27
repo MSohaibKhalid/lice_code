@@ -790,7 +790,7 @@ def get_results_MultiLSTM(model, X_train, y_train, scaled_data_chunk, X_test_sam
         normalized_test_data_ = np.concatenate((scaled_data_chunk, X_test_sample), axis=0)
         last_window = normalized_test_data_[ts:ts + window_size].copy()
         pred = model.predict(last_window.reshape(1, window_size, feature_length), verbose=False)[0, 0]
-        pred = np.absolute(pred[0])
+        pred = np.absolute(pred)
 
         # Calculate mean absolute error
         mae = np.absolute(pred - actual_val)
@@ -809,7 +809,7 @@ def get_results_MultiLSTM(model, X_train, y_train, scaled_data_chunk, X_test_sam
         normalized_test_data_ = np.concatenate((scaled_data_chunk, X_test_sample), axis=0)
         last_window = normalized_test_data_[ts:ts + window_size].copy()
         pred = model.predict(last_window.reshape(1, window_size, feature_length), verbose=False)[0, 0]
-        pred = np.absolute(pred[0])
+        pred = np.absolute(pred)
         mae = np.absolute(pred - actual_val)
         best_model_specs['weeks_future_values'][ts] = pred
 
@@ -837,7 +837,7 @@ def get_results_MultiBiLSTM(model, X_train, y_train, scaled_data_chunk, X_test_s
         normalized_test_data_ = np.concatenate((scaled_data_chunk, X_test_sample), axis=0)
         last_window = normalized_test_data_[ts:ts + window_size].copy()
         pred = model.predict(last_window.reshape(1, window_size, feature_length), verbose=False)[0, 0]
-        pred = np.absolute(pred[0])
+        pred = np.absolute(pred)
 
         # Calculate mean absolute error
         mae = np.absolute(pred - actual_val)
@@ -858,7 +858,7 @@ def get_results_MultiBiLSTM(model, X_train, y_train, scaled_data_chunk, X_test_s
         normalized_test_data_ = np.concatenate((scaled_data_chunk, X_test_sample), axis=0)
         last_window = normalized_test_data_[ts:ts + window_size].copy()
         pred = model.predict(last_window.reshape(1, window_size, feature_length), verbose=False)[0, 0]
-        pred = np.absolute(pred[0])
+        pred = np.absolute(pred)
         mae = np.absolute(pred - actual_val)
         best_model_specs['weeks_future_values'][ts] = pred
 
@@ -886,7 +886,7 @@ def get_results_transformer(model, X_train, y_train, scaled_data_chunk, X_test_s
         normalized_test_data_ = np.concatenate((scaled_data_chunk, X_test_sample), axis=0)
         last_window = normalized_test_data_[ts:ts + window_size].copy()
         pred = model.predict(last_window.reshape(1, window_size, feature_length), verbose=False)[0, 0]
-        pred = np.absolute(pred[0])
+        pred = np.absolute(pred)
 
         # Calculate mean absolute error
         mae = np.absolute(pred - actual_val)
@@ -905,7 +905,7 @@ def get_results_transformer(model, X_train, y_train, scaled_data_chunk, X_test_s
         normalized_test_data_ = np.concatenate((scaled_data_chunk, X_test_sample), axis=0)
         last_window = normalized_test_data_[ts:ts + window_size].copy()
         pred = model.predict(last_window.reshape(1, window_size, feature_length), verbose=False)[0, 0]
-        pred = np.absolute(pred[0])
+        pred = np.absolute(pred)
         mae = np.absolute(pred - actual_val)
         best_model_specs['weeks_future_values'][ts] = pred
 
