@@ -473,14 +473,6 @@ def generate_multivariate_sequences(data, window_size):
         y.append(data[i + window_size, 0])
     return np.array(X), np.array(y)
 
-# Define the test data generator for multivariate LSTM
-def get_sequences(data, window_size, pred, i):
-    X = np.array(data[i:i + window_size])
-    if i > 0:
-        X[window_size-1, 0] = pred
-    data[i:i + window_size] = X
-    return np.array(X), data
-
 
 
 def calculate_array_differences(matched_window, check_window):
@@ -796,7 +788,7 @@ def get_results_MultiLSTM(model, X_train, y_train, scaled_data_chunk, X_test_sam
         print("\n--> Training {} Complete.".format(model_name))
 
         normalized_test_data_ = np.concatenate((scaled_data_chunk, X_test_sample), axis=0)
-        last_window, _ = get_sequences(normalized_test_data_, window_size, pred, ts)
+        last_window = normalized_test_data_[ts:ts + window_size].copy()
         pred = model.predict(last_window.reshape(1, window_size, feature_length), verbose=False)[0, 0]
         pred = np.absolute(pred[0])
 
@@ -815,7 +807,7 @@ def get_results_MultiLSTM(model, X_train, y_train, scaled_data_chunk, X_test_sam
     elif run == "second" and best_model_specs["weeks_test_model_name"][ts] == model_name:
         model.fit(X_train, y_train, epochs=n_epoch, batch_size=batch_size, verbose=False)
         normalized_test_data_ = np.concatenate((scaled_data_chunk, X_test_sample), axis=0)
-        last_window, _ = get_sequences(normalized_test_data_, window_size, pred, ts)
+        last_window = normalized_test_data_[ts:ts + window_size].copy()
         pred = model.predict(last_window.reshape(1, window_size, feature_length), verbose=False)[0, 0]
         pred = np.absolute(pred[0])
         mae = np.absolute(pred - actual_val)
@@ -843,7 +835,7 @@ def get_results_MultiBiLSTM(model, X_train, y_train, scaled_data_chunk, X_test_s
         print("\n--> Training {} Complete.".format(model_name))
 
         normalized_test_data_ = np.concatenate((scaled_data_chunk, X_test_sample), axis=0)
-        last_window, _ = get_sequences(normalized_test_data_, window_size, pred, ts)
+        last_window = normalized_test_data_[ts:ts + window_size].copy()
         pred = model.predict(last_window.reshape(1, window_size, feature_length), verbose=False)[0, 0]
         pred = np.absolute(pred[0])
 
@@ -864,7 +856,7 @@ def get_results_MultiBiLSTM(model, X_train, y_train, scaled_data_chunk, X_test_s
     elif run == "second" and best_model_specs["weeks_test_model_name"][ts] == model_name:
         model.fit(X_train, y_train, epochs=n_epoch, batch_size=batch_size, verbose=False)
         normalized_test_data_ = np.concatenate((scaled_data_chunk, X_test_sample), axis=0)
-        last_window, _ = get_sequences(normalized_test_data_, window_size, pred, ts)
+        last_window = normalized_test_data_[ts:ts + window_size].copy()
         pred = model.predict(last_window.reshape(1, window_size, feature_length), verbose=False)[0, 0]
         pred = np.absolute(pred[0])
         mae = np.absolute(pred - actual_val)
@@ -892,7 +884,7 @@ def get_results_transformer(model, X_train, y_train, scaled_data_chunk, X_test_s
         print("\n--> Training {} Complete.".format(model_name))
 
         normalized_test_data_ = np.concatenate((scaled_data_chunk, X_test_sample), axis=0)
-        last_window, _ = get_sequences(normalized_test_data_, window_size, pred, ts)
+        last_window = normalized_test_data_[ts:ts + window_size].copy()
         pred = model.predict(last_window.reshape(1, window_size, feature_length), verbose=False)[0, 0]
         pred = np.absolute(pred[0])
 
@@ -911,7 +903,7 @@ def get_results_transformer(model, X_train, y_train, scaled_data_chunk, X_test_s
     elif run == "second" and best_model_specs["weeks_test_model_name"][ts] == model_name:
         model.fit(X_train, y_train, epochs=n_epoch, batch_size=batch_size, verbose=False)
         normalized_test_data_ = np.concatenate((scaled_data_chunk, X_test_sample), axis=0)
-        last_window, _ = get_sequences(normalized_test_data_, window_size, pred, ts)
+        last_window = normalized_test_data_[ts:ts + window_size].copy()
         pred = model.predict(last_window.reshape(1, window_size, feature_length), verbose=False)[0, 0]
         pred = np.absolute(pred[0])
         mae = np.absolute(pred - actual_val)
@@ -966,7 +958,6 @@ def get_results_rolling_window(trainX, trainY, actual_values, best_model_specs, 
         roll_next_5_weeks = np.array(trainX[top_locality].values[best_window[1]+N+1 : best_window[1]+2*N+1].flatten())
         try:
             diff_last_nonzero, diff_nonzero_mean = calculate_array_differences(matched_window, check_window)
-
             prediction_last_nonzero =  np.abs(forecast_window - diff_last_nonzero)
             next_5_weeks_last_nonzero =  np.abs(roll_next_5_weeks - diff_last_nonzero)
             prediction_mean =  np.abs(forecast_window - diff_nonzero_mean)
