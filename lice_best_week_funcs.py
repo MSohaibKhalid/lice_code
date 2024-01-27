@@ -1082,7 +1082,7 @@ def get_N_forecasts(df, given_locality = 19015, N = 5, top_k = 10, lr = 1e-3, n_
         best_model_specs = {}
         best_model_specs['weeks_test_model_name'] = np.zeros(N)
         best_model_specs['weeks_test_preds'] = np.zeros(N)
-        best_model_specs['weeks_test_mae'] = np.one(N)*100
+        best_model_specs['weeks_test_mae'] = np.ones(N)*100
         best_model_specs['weeks_future_values'] = np.zeros(N)
 
         model_LR = None
