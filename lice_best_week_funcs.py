@@ -991,7 +991,7 @@ def get_results_rolling_window(trainX, trainY, actual_values, best_model_specs, 
             print(f'Updating best model specs for rolling_mean for week {ts}')
         
         if mae_last_nonzero < best_model_specs['weeks_test_mae'][ts]:
-            best_model_specs['weeks_test_model_name'][ts] = "rolling_mean"
+            best_model_specs['weeks_test_model_name'][ts] = "rolling_last_nonzero"
             best_model_specs['weeks_test_preds'][ts] = prediction_last_nonzero[ts]
             best_model_specs['weeks_future_values'][ts] = next_5_weeks_last_nonzero[ts]
             best_model_specs['weeks_test_mae'][ts] = mae_last_nonzero
@@ -1080,7 +1080,7 @@ def get_N_forecasts(df, given_locality = 19015, N = 5, top_k = 10, lr = 1e-3, n_
         top_k_localities = get_top_K_localities(given_locality, given_locality_df, non_zero_entries_indices, df, top_k)
 
         best_model_specs = {}
-        best_model_specs['weeks_test_model_name'] = np.zeros(N)
+        best_model_specs['weeks_test_model_name'] = ['']*5
         best_model_specs['weeks_test_preds'] = np.zeros(N)
         best_model_specs['weeks_test_mae'] = np.ones(N)*100
         best_model_specs['weeks_future_values'] = np.zeros(N)
