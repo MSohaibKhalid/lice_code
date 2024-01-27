@@ -1187,7 +1187,7 @@ def get_N_forecasts(df, given_locality = 19015, N = 5, top_k = 10, lr = 1e-3, n_
                 test_sample = X_test_scaled_M2
                 if ts != 0:
                     X_test_scaled_M4[ts,-1] = best_model_specs['weeks_test_pred'][ts-1]
-                test_sample_seq = X_test_scaled_M4.iloc[:ts+1]
+                test_sample_seq = X_test_scaled_M4[:ts+1]
                 actual_val = actual_values[ts]
 
                 ################################ Getting Results for M2 MODELs ################################
