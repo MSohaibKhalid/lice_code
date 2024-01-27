@@ -636,7 +636,7 @@ def prepare_dataset(df, given_locality, non_zero_entries_indices, top_k_localiti
     return data
 
 
-def get_results_LR(model, X_train_scaled, y_train, ts, X_test_sample, actual_val, best_model_specs, N, run):
+def get_results_LR(model, X_train_scaled, y_train, ts, X_test_sample, actual_val, best_model_specs, N, run, mae_list):
     
     model_name = "LR"
 
@@ -664,21 +664,19 @@ def get_results_LR(model, X_train_scaled, y_train, ts, X_test_sample, actual_val
         print()
     
 
-    elif run == "second" and best_model_specs["weeks_test_model_name"][ts] == model_name:
+    else:
         model.fit(X_train_scaled, y_train)
         pred = model.predict(X_test_sample)
         pred = np.absolute(pred[0])
-        mae = np.absolute(pred - actual_val)
-        best_model_specs['weeks_future_values'][ts] = pred
-
-    else:
-        model, mae, pred, best_model_specs = model, None, None, best_model_specs
+        mae = mae_list[ts]
+        if best_model_specs["weeks_test_model_name"][ts] == model_name:
+            best_model_specs['weeks_future_values'][ts] = pred
 
     return model, mae, pred, best_model_specs
 
 
 
-def get_results_NN(model, X_train_scaled, y_train, ts, X_test_sample, actual_val, best_model_specs, n_epoch, lr, N, run):
+def get_results_NN(model, X_train_scaled, y_train, ts, X_test_sample, actual_val, best_model_specs, n_epoch, lr, N, run, mae_list):
     
     model_name = "NN"
     optm = tf.keras.optimizers.legacy.Adam(learning_rate=lr)
@@ -711,21 +709,19 @@ def get_results_NN(model, X_train_scaled, y_train, ts, X_test_sample, actual_val
             print('Updating best model specs for {}'.format(model_name))
         print()
 
-    elif run == "second" and best_model_specs["weeks_test_model_name"][ts] == model_name:
+    else:
         model.fit(X_train_scaled, y_train, epochs=n_epoch, verbose=0)
         pred = model.predict(X_test_sample)
         pred = np.absolute(pred[0])
-        mae = np.absolute(pred - actual_val)
-        best_model_specs['weeks_future_values'][ts] = pred
-
-    else:
-        model, mae, pred, best_model_specs = model, None, None, best_model_specs
+        mae = mae_list[ts]
+        if best_model_specs["weeks_test_model_name"][ts] == model_name:
+            best_model_specs['weeks_future_values'][ts] = pred
 
     return model, mae, pred, best_model_specs
 
 
 
-def get_results_NN2(model, X_train_scaled, y_train, ts, X_test_sample, actual_val, best_model_specs, n_epoch, lr, N, run):
+def get_results_NN2(model, X_train_scaled, y_train, ts, X_test_sample, actual_val, best_model_specs, n_epoch, lr, N, run, mae_list):
     
     model_name = "NN2"
     optm = tf.keras.optimizers.legacy.Adam(learning_rate=lr)
@@ -759,20 +755,18 @@ def get_results_NN2(model, X_train_scaled, y_train, ts, X_test_sample, actual_va
             print('Updating best model specs for {}'.format(model_name))
         print()
 
-    elif run == "second" and best_model_specs["weeks_test_model_name"][ts] == model_name:
+    else:
         model.fit(X_train_scaled, y_train, epochs=n_epoch, verbose=0)
         pred = model.predict(X_test_sample)
         pred = np.absolute(pred[0])
-        mae = np.absolute(pred - actual_val)
-        best_model_specs['weeks_future_values'][ts] = pred
-
-    else:
-        model, mae, pred, best_model_specs = model, None, None, best_model_specs
+        mae = mae_list[ts]
+        if best_model_specs["weeks_test_model_name"][ts] == model_name:
+            best_model_specs['weeks_future_values'][ts] = pred
 
     return model, mae, pred, best_model_specs
 
 
-def get_results_MultiLSTM(model, X_train, y_train, scaled_data_chunk, X_test_sample, actual_val, scaler_seq, window_size, batch_size, best_model_specs, n_epoch, lr, N, ts, run):
+def get_results_MultiLSTM(model, X_train, y_train, scaled_data_chunk, X_test_sample, actual_val, scaler_seq, window_size, batch_size, best_model_specs, n_epoch, lr, N, ts, run, mae_list):
     
     model_name = "MultiLSTM"
     feature_length = scaled_data_chunk.shape[1]
@@ -804,22 +798,20 @@ def get_results_MultiLSTM(model, X_train, y_train, scaled_data_chunk, X_test_sam
             print('Updating best model specs for {}'.format(model_name))
         print()
 
-    elif run == "second" and best_model_specs["weeks_test_model_name"][ts] == model_name:
+    else:
         model.fit(X_train, y_train, epochs=n_epoch, batch_size=batch_size, verbose=False)
         normalized_test_data_ = np.concatenate((scaled_data_chunk, X_test_sample), axis=0)
         last_window = normalized_test_data_[ts:ts + window_size].copy()
         pred = model.predict(last_window.reshape(1, window_size, feature_length), verbose=False)[0, 0]
         pred = np.absolute(pred)
-        mae = np.absolute(pred - actual_val)
-        best_model_specs['weeks_future_values'][ts] = pred
-
-    else:
-        model, mae, pred, best_model_specs = model, None, None, best_model_specs
+        mae = mae_list[ts]
+        if best_model_specs["weeks_test_model_name"][ts] == model_name:
+            best_model_specs['weeks_future_values'][ts] = pred
 
     return model, mae, pred, best_model_specs
 
 
-def get_results_MultiBiLSTM(model, X_train, y_train, scaled_data_chunk, X_test_sample, actual_val, scaler_seq, window_size, batch_size, best_model_specs, n_epoch, lr, N, ts, run):
+def get_results_MultiBiLSTM(model, X_train, y_train, scaled_data_chunk, X_test_sample, actual_val, scaler_seq, window_size, batch_size, best_model_specs, n_epoch, lr, N, ts, run, mae_list):
     
     model_name = "MultiBiLSTM"
     feature_length = scaled_data_chunk.shape[1]
@@ -853,22 +845,20 @@ def get_results_MultiBiLSTM(model, X_train, y_train, scaled_data_chunk, X_test_s
 
         print()
     
-    elif run == "second" and best_model_specs["weeks_test_model_name"][ts] == model_name:
+    else:
         model.fit(X_train, y_train, epochs=n_epoch, batch_size=batch_size, verbose=False)
         normalized_test_data_ = np.concatenate((scaled_data_chunk, X_test_sample), axis=0)
         last_window = normalized_test_data_[ts:ts + window_size].copy()
         pred = model.predict(last_window.reshape(1, window_size, feature_length), verbose=False)[0, 0]
         pred = np.absolute(pred)
-        mae = np.absolute(pred - actual_val)
-        best_model_specs['weeks_future_values'][ts] = pred
-
-    else:
-        model, mae, pred, best_model_specs = model, None, None, best_model_specs
+        mae = mae_list[ts]
+        if best_model_specs["weeks_test_model_name"][ts] == model_name:
+            best_model_specs['weeks_future_values'][ts] = pred
 
     return model, mae, pred, best_model_specs
 
 
-def get_results_transformer(model, X_train, y_train, scaled_data_chunk, X_test_sample, actual_val, scaler_seq, window_size, batch_size, best_model_specs, n_epoch, lr, N, ts, run):
+def get_results_transformer(model, X_train, y_train, scaled_data_chunk, X_test_sample, actual_val, scaler_seq, window_size, batch_size, best_model_specs, n_epoch, lr, N, ts, run, mae_list):
     
     model_name = "transformer"
     feature_length = scaled_data_chunk.shape[1]
@@ -900,17 +890,15 @@ def get_results_transformer(model, X_train, y_train, scaled_data_chunk, X_test_s
             print('Updating best model specs for {}'.format(model_name))
         print()
 
-    elif run == "second" and best_model_specs["weeks_test_model_name"][ts] == model_name:
+    else:
         model.fit(X_train, y_train, epochs=n_epoch, batch_size=batch_size, verbose=False)
         normalized_test_data_ = np.concatenate((scaled_data_chunk, X_test_sample), axis=0)
         last_window = normalized_test_data_[ts:ts + window_size].copy()
         pred = model.predict(last_window.reshape(1, window_size, feature_length), verbose=False)[0, 0]
         pred = np.absolute(pred)
-        mae = np.absolute(pred - actual_val)
-        best_model_specs['weeks_future_values'][ts] = pred
-
-    else:
-        model, mae, pred, best_model_specs = model, None, None, best_model_specs
+        mae = mae_list[ts]
+        if best_model_specs["weeks_test_model_name"][ts] == model_name:
+            best_model_specs['weeks_future_values'][ts] = pred
 
     return model, mae, pred, best_model_specs
 
@@ -1087,6 +1075,13 @@ def get_N_forecasts(df, given_locality = 19015, N = 5, top_k = 10, lr = 1e-3, n_
         model_MultiBiLSTM = None
         model_transformer = None
 
+        mae_list_LR = np.zeros(N)
+        mae_list_NN = np.zeros(N)
+        mae_list_NN2 = np.zeros(N)
+        mae_list_MultiLSTM = np.zeros(N)
+        mae_list_MultiBiLSTM = np.zeros(N)
+        mae_list_transformer = np.zeros(N)
+
         preds_LR = np.zeros(N)
         preds_NN = np.zeros(N)
         preds_NN2 = np.zeros(N)
@@ -1186,18 +1181,18 @@ def get_N_forecasts(df, given_locality = 19015, N = 5, top_k = 10, lr = 1e-3, n_
                 actual_val = actual_values[ts]
 
                 ################################ Getting Results for M2 MODELs ################################
-                model_LR, mae_LR, pred_LR, best_model_specs = get_results_LR(model_LR, X_train_scaled_M2, y_train, ts, test_sample, actual_val, best_model_specs, N, run)
-                model_NN, mae_NN, pred_NN, best_model_specs = get_results_NN(model_NN, X_train_scaled_M2, y_train, ts, test_sample, actual_val, best_model_specs, n_epoch, lr, N, run)
-                model_NN2, mae_NN2, pred_NN2, best_model_specs = get_results_NN2(model_NN2, X_train_scaled_M2, y_train, ts, test_sample, actual_val, best_model_specs, n_epoch, lr, N, run)
+                model_LR, mae_LR, pred_LR, best_model_specs = get_results_LR(model_LR, X_train_scaled_M2, y_train, ts, test_sample, actual_val, best_model_specs, N, run, mae_list_LR)
+                model_NN, mae_NN, pred_NN, best_model_specs = get_results_NN(model_NN, X_train_scaled_M2, y_train, ts, test_sample, actual_val, best_model_specs, n_epoch, lr, N, run, mae_list_NN)
+                model_NN2, mae_NN2, pred_NN2, best_model_specs = get_results_NN2(model_NN2, X_train_scaled_M2, y_train, ts, test_sample, actual_val, best_model_specs, n_epoch, lr, N, run, mae_list_NN2)
 
 
                 ##############################################################################################################
                 ##############################################################################################################
 
                 ################################ Getting Results for M4 MODELs ################################
-                model_MultiLSTM, mae_MultiLSTM, pred_MultiLSTM, best_model_specs = get_results_MultiLSTM(model_MultiLSTM, X_train_seq, y_train_seq, X_trained_scaled_chunk, test_sample_seq, actual_val, scaler_seq, window_size, batch_size, best_model_specs, n_epoch, lr, N, ts, run)
-                model_MultiBiLSTM, mae_MultiBiLSTM, pred_MultiBiLSTM, best_model_specs = get_results_MultiBiLSTM(model_MultiBiLSTM, X_train_seq, y_train_seq, X_trained_scaled_chunk, test_sample_seq, actual_val, scaler_seq, window_size, batch_size, best_model_specs, n_epoch, lr, N, ts, run)
-                model_transformer, mae_transformer, pred_transformer, best_model_specs = get_results_transformer(model_transformer, X_train_seq, y_train_seq, X_trained_scaled_chunk, test_sample_seq, actual_val, scaler_seq, window_size, batch_size, best_model_specs, n_epoch, lr, N, ts, run)
+                model_MultiLSTM, mae_MultiLSTM, pred_MultiLSTM, best_model_specs = get_results_MultiLSTM(model_MultiLSTM, X_train_seq, y_train_seq, X_trained_scaled_chunk, test_sample_seq, actual_val, scaler_seq, window_size, batch_size, best_model_specs, n_epoch, lr, N, ts, run, mae_list_MultiLSTM)
+                model_MultiBiLSTM, mae_MultiBiLSTM, pred_MultiBiLSTM, best_model_specs = get_results_MultiBiLSTM(model_MultiBiLSTM, X_train_seq, y_train_seq, X_trained_scaled_chunk, test_sample_seq, actual_val, scaler_seq, window_size, batch_size, best_model_specs, n_epoch, lr, N, ts, mae_list_MultiBiLSTM)
+                model_transformer, mae_transformer, pred_transformer, best_model_specs = get_results_transformer(model_transformer, X_train_seq, y_train_seq, X_trained_scaled_chunk, test_sample_seq, actual_val, scaler_seq, window_size, batch_size, best_model_specs, n_epoch, lr, N, ts, run, mae_list_transformer)
                 
 
                 ##############################################################################################################
@@ -1225,6 +1220,13 @@ def get_N_forecasts(df, given_locality = 19015, N = 5, top_k = 10, lr = 1e-3, n_
                 ##############################################################################################################
 
                 if run == "first":
+                    mae_list_LR[ts] = mae_LR
+                    mae_list_NN[ts] = mae_NN
+                    mae_list_NN2[ts] = mae_NN2
+                    mae_list_MultiLSTM[ts] = mae_MultiLSTM
+                    mae_list_MultiBiLSTM[ts] = mae_MultiBiLSTM
+                    mae_list_transformer[ts] = mae_transformer
+
                     preds_LR[ts] = pred_LR
                     preds_NN[ts] = pred_NN
                     preds_NN2[ts] = pred_NN2
