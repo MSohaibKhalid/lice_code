@@ -797,7 +797,7 @@ def get_results_MultiLSTM(model, X_train, y_train, scaled_data_chunk, X_test_sam
 
         print("--> Evaluation for {} Complete.".format(model_name))
     
-        if mae < best_model_specs['mae']:
+        if mae < best_model_specs['weeks_test_mae'][ts]:
             best_model_specs['weeks_test_model_name'][ts] = model_name
             best_model_specs['weeks_test_preds'][ts] = pred
             best_model_specs['weeks_test_mae'][ts] = mae
@@ -844,7 +844,7 @@ def get_results_MultiBiLSTM(model, X_train, y_train, scaled_data_chunk, X_test_s
 
         print("--> Evaluation for {} Complete.".format(model_name))
     
-        if mae < best_model_specs['mae']:
+        if mae < best_model_specs['weeks_test_mae'][ts]:
             best_model_specs['weeks_test_model_name'][ts] = model_name
             best_model_specs['weeks_test_preds'][ts] = pred
             best_model_specs['weeks_test_mae'][ts] = mae
@@ -893,7 +893,7 @@ def get_results_transformer(model, X_train, y_train, scaled_data_chunk, X_test_s
 
         print("--> Evaluation for {} Complete.".format(model_name))
 
-        if mae < best_model_specs['mae']:
+        if mae < best_model_specs['weeks_test_mae'][ts]:
             best_model_specs['weeks_test_model_name'][ts] = model_name
             best_model_specs['weeks_test_preds'][ts] = pred
             best_model_specs['weeks_test_mae'][ts] = mae
