@@ -1017,7 +1017,7 @@ def get_results_comb(model_name, mae_rolling, preds_rolling, futures_rolling, ma
     print("--> Evaluation for {} Complete.".format(model_name))
 
     if run == 'first':
-        if mae < best_model_specs['mae']:
+        if mae < best_model_specs['weeks_test_mae'][ts]:
             best_model_specs['weeks_test_model_name'][ts] = model_name
             best_model_specs['weeks_test_preds'][ts] = pred
             best_model_specs['weeks_test_mae'][ts] = mae
