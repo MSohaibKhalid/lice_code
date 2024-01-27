@@ -28,9 +28,9 @@ def get_arguments():
 
 if __name__=="__main__":
 
-    output_all_file_name = 'all_results_best_week_complete.csv'
-    output_best_file_name ='best_results_best_week_complete.csv'
-    training_history_file = 'training_history_best_week_complete.csv'
+    output_all_file_name = 'all_results_best_week_experiment.csv'
+    output_best_file_name ='best_results_best_week_experiment.csv'
+    training_history_file = 'training_history_best_week_experiment.csv'
 
     info_file_name = "locality_info.csv"
     limits_file_name = "lice_limits.csv"
