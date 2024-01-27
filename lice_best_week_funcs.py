@@ -970,9 +970,13 @@ def get_results_rolling_window(trainX, trainY, actual_values, best_model_specs, 
 
     print("--> Evaluation for rolling_window Complete.")
 
+    mean_mae_list = np.zeros(N)
+    last_nonzero_mae_list = np.zeros(N)
     for ts in range(N):
         mae_last_nonzero = np.absolute(prediction_last_nonzero[ts] - actual_values[ts])
+        last_nonzero_mae_list[ts] = mae_last_nonzero
         mae_mean = np.absolute(prediction_mean[ts] - actual_values[ts])
+        mean_mae_list[ts] = mae_mean
         if mae_mean < best_model_specs['weeks_test_mae'][ts]:
             best_model_specs['weeks_test_model_name'][ts] = "rolling_mean"
             best_model_specs['weeks_test_preds'][ts] = prediction_mean[ts]
@@ -991,7 +995,7 @@ def get_results_rolling_window(trainX, trainY, actual_values, best_model_specs, 
 
     print()
 
-    return mae_mean, prediction_mean.reshape(-1), next_5_weeks_mean.reshape(-1), mae_last_nonzero, prediction_last_nonzero.reshape(-1), next_5_weeks_last_nonzero.reshape(-1), best_model_specs
+    return mean_mae_list, prediction_mean.reshape(-1), next_5_weeks_mean.reshape(-1), last_nonzero_mae_list, prediction_last_nonzero.reshape(-1), next_5_weeks_last_nonzero.reshape(-1), best_model_specs
 
 
 def get_results_comb(model_name, mae_rolling, preds_rolling, futures_rolling, mae2, pred2, actual_val, best_model_specs, ts, run):
