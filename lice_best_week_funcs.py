@@ -784,6 +784,9 @@ def get_results_MultiLSTM(model, X_train, y_train, scaled_data_chunk, X_test_sam
         normalized_test_data_ = np.concatenate((scaled_data_chunk, X_test_sample), axis=0)
         last_window = normalized_test_data_[ts:ts + window_size].copy()
         pred = model.predict(last_window.reshape(1, window_size, feature_length), verbose=False)[0, 0]
+        last_window[-1,-1] = pred
+        rescaled = scaler_seq.inverse_transform(last_window) 
+        pred = rescaled[-1,-1]
         pred = np.absolute(pred)
 
         # Calculate mean absolute error
@@ -803,6 +806,9 @@ def get_results_MultiLSTM(model, X_train, y_train, scaled_data_chunk, X_test_sam
         normalized_test_data_ = np.concatenate((scaled_data_chunk, X_test_sample), axis=0)
         last_window = normalized_test_data_[ts:ts + window_size].copy()
         pred = model.predict(last_window.reshape(1, window_size, feature_length), verbose=False)[0, 0]
+        last_window[-1,-1] = pred
+        rescaled = scaler_seq.inverse_transform(last_window) 
+        pred = rescaled[-1,-1]
         pred = np.absolute(pred)
         mae = mae_list[ts]
         if best_model_specs["weeks_test_model_name"][ts] == model_name:
@@ -829,6 +835,9 @@ def get_results_MultiBiLSTM(model, X_train, y_train, scaled_data_chunk, X_test_s
         normalized_test_data_ = np.concatenate((scaled_data_chunk, X_test_sample), axis=0)
         last_window = normalized_test_data_[ts:ts + window_size].copy()
         pred = model.predict(last_window.reshape(1, window_size, feature_length), verbose=False)[0, 0]
+        last_window[-1,-1] = pred
+        rescaled = scaler_seq.inverse_transform(last_window) 
+        pred = rescaled[-1,-1]
         pred = np.absolute(pred)
 
         # Calculate mean absolute error
@@ -850,6 +859,9 @@ def get_results_MultiBiLSTM(model, X_train, y_train, scaled_data_chunk, X_test_s
         normalized_test_data_ = np.concatenate((scaled_data_chunk, X_test_sample), axis=0)
         last_window = normalized_test_data_[ts:ts + window_size].copy()
         pred = model.predict(last_window.reshape(1, window_size, feature_length), verbose=False)[0, 0]
+        last_window[-1,-1] = pred
+        rescaled = scaler_seq.inverse_transform(last_window) 
+        pred = rescaled[-1,-1]
         pred = np.absolute(pred)
         mae = mae_list[ts]
         if best_model_specs["weeks_test_model_name"][ts] == model_name:
@@ -876,6 +888,9 @@ def get_results_transformer(model, X_train, y_train, scaled_data_chunk, X_test_s
         normalized_test_data_ = np.concatenate((scaled_data_chunk, X_test_sample), axis=0)
         last_window = normalized_test_data_[ts:ts + window_size].copy()
         pred = model.predict(last_window.reshape(1, window_size, feature_length), verbose=False)[0, 0]
+        last_window[-1,-1] = pred
+        rescaled = scaler_seq.inverse_transform(last_window) 
+        pred = rescaled[-1,-1]
         pred = np.absolute(pred)
 
         # Calculate mean absolute error
@@ -895,6 +910,9 @@ def get_results_transformer(model, X_train, y_train, scaled_data_chunk, X_test_s
         normalized_test_data_ = np.concatenate((scaled_data_chunk, X_test_sample), axis=0)
         last_window = normalized_test_data_[ts:ts + window_size].copy()
         pred = model.predict(last_window.reshape(1, window_size, feature_length), verbose=False)[0, 0]
+        last_window[-1,-1] = pred
+        rescaled = scaler_seq.inverse_transform(last_window) 
+        pred = rescaled[-1,-1]
         pred = np.absolute(pred)
         mae = mae_list[ts]
         if best_model_specs["weeks_test_model_name"][ts] == model_name:
@@ -1191,7 +1209,7 @@ def get_N_forecasts(df, given_locality = 19015, N = 5, top_k = 10, lr = 1e-3, n_
 
                 ################################ Getting Results for M4 MODELs ################################
                 model_MultiLSTM, mae_MultiLSTM, pred_MultiLSTM, best_model_specs = get_results_MultiLSTM(model_MultiLSTM, X_train_seq, y_train_seq, X_trained_scaled_chunk, test_sample_seq, actual_val, scaler_seq, window_size, batch_size, best_model_specs, n_epoch, lr, N, ts, run, mae_list_MultiLSTM)
-                model_MultiBiLSTM, mae_MultiBiLSTM, pred_MultiBiLSTM, best_model_specs = get_results_MultiBiLSTM(model_MultiBiLSTM, X_train_seq, y_train_seq, X_trained_scaled_chunk, test_sample_seq, actual_val, scaler_seq, window_size, batch_size, best_model_specs, n_epoch, lr, N, ts, mae_list_MultiBiLSTM)
+                model_MultiBiLSTM, mae_MultiBiLSTM, pred_MultiBiLSTM, best_model_specs = get_results_MultiBiLSTM(model_MultiBiLSTM, X_train_seq, y_train_seq, X_trained_scaled_chunk, test_sample_seq, actual_val, scaler_seq, window_size, batch_size, best_model_specs, n_epoch, lr, N, ts, run, mae_list_MultiBiLSTM)
                 model_transformer, mae_transformer, pred_transformer, best_model_specs = get_results_transformer(model_transformer, X_train_seq, y_train_seq, X_trained_scaled_chunk, test_sample_seq, actual_val, scaler_seq, window_size, batch_size, best_model_specs, n_epoch, lr, N, ts, run, mae_list_transformer)
                 
 
