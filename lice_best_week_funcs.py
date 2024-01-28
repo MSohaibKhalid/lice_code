@@ -1340,7 +1340,7 @@ def get_N_forecasts(df, given_locality = 19015, N = 5, top_k = 10, lr = 1e-3, n_
             "best_model": [str(best_model_specs['weeks_test_model_name'])],
             "mae": [str(best_model_specs['weeks_test_mae'])],
             "preds": [str(best_model_specs['weeks_test_preds'])],
-            "future_values": [str(best_model_specs['week_future_values'])],
+            "future_values": [str(best_model_specs['weeks_future_values'])],
         })
 
         if os.path.isfile(output_best):
